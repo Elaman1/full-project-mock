@@ -9,7 +9,6 @@ import (
 	"full-project-mock/internal/domain/repository"
 	"full-project-mock/internal/domain/usecase"
 	"full-project-mock/pkg/hasher"
-	"strconv"
 	"time"
 )
 
@@ -60,19 +59,15 @@ func (u *Usecase) Register(ctx context.Context, email, username, password string
 	return 0, nil
 }
 
-func (u *Usecase) Login(ctx context.Context, email, password string) (string, string, error) {
+func (u *Usecase) Login(ctx context.Context, email, password, clientIP, ua string) (string, string, error) {
 	user, err := u.Rep.Get(ctx, email)
 	if err != nil {
 		return "", "", err
 	}
 
-	ok, err := hasher.VerifyPassword(password, user.Password)
+	err = hasher.Verify(user.Password, password)
 	if err != nil {
 		return "", "", err
-	}
-
-	if !ok {
-		return "", "", fmt.Errorf("логин или пароль неправильный")
 	}
 
 	accessToken, err := u.TokenService.GenerateAccessToken(user)
@@ -80,12 +75,21 @@ func (u *Usecase) Login(ctx context.Context, email, password string) (string, st
 		return "", "", err
 	}
 
-	refreshToken, err := u.TokenService.GenerateRefreshToken()
+	refreshToken, plain, err := u.TokenService.GenerateRefreshToken()
 	if err != nil {
 		return "", "", err
 	}
 
-	err = u.SessionCache.StoreRefreshToken(ctx, strconv.Itoa(int(user.ID)), refreshToken, u.RefreshTtl)
+	sess := &domcache.RefreshSession{
+		UserID:    user.ID,
+		TokenID:   refreshToken,
+		TokenHash: hasher.Sha256Hex(plain),
+		ExpiresAt: time.Now().Add(u.RefreshTtl),
+		IP:        clientIP,
+		UserAgent: ua,
+	}
+
+	err = u.SessionCache.SaveSession(ctx, sess, u.RefreshTtl)
 	if err != nil {
 		return "", "", err
 	}

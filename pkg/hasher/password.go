@@ -1,13 +1,12 @@
 package hasher
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"strings"
-
 	"golang.org/x/crypto/argon2"
 )
 
@@ -25,23 +24,23 @@ func HashPassword(password string) (string, error) {
 	return fmt.Sprintf("%s:%s", saltEncoded, hashEncoded), nil
 }
 
-func VerifyPassword(password, fullHash string) (bool, error) {
-	parts := strings.Split(fullHash, ":")
+func Verify(hashedPwd, pwd string) error {
+	parts := bytes.SplitN([]byte(hashedPwd), []byte{':'}, 2)
 	if len(parts) != 2 {
-		return false, errors.New("invalid hash format")
+		return errors.New("invalid hash format")
 	}
-
-	salt, err := base64.RawStdEncoding.DecodeString(parts[0])
+	salt, err := base64.RawStdEncoding.DecodeString(string(parts[0]))
 	if err != nil {
-		return false, fmt.Errorf("failed to decode salt: %w", err)
+		return err
 	}
-
-	expectedHash, err := base64.RawStdEncoding.DecodeString(parts[1])
+	expected, err := base64.RawStdEncoding.DecodeString(string(parts[1]))
 	if err != nil {
-		return false, fmt.Errorf("failed to decode hash: %w", err)
+		return err
 	}
 
-	hash := argon2.IDKey([]byte(password), salt, 1, 64*1024, 4, 32)
-
-	return subtle.ConstantTimeCompare(hash, expectedHash) == 1, nil
+	got := argon2.IDKey([]byte(pwd), salt, 1, 64*1024, 4, 32)
+	if subtle.ConstantTimeCompare(expected, got) != 1 {
+		return errors.New("логин или пароль неправильный")
+	}
+	return nil
 }

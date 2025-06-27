@@ -6,6 +6,7 @@ import (
 	"full-project-mock/internal/domain/usecase"
 	"full-project-mock/internal/middleware"
 	"full-project-mock/internal/service"
+	"full-project-mock/pkg/req"
 	"full-project-mock/pkg/respond"
 	"net/http"
 )
@@ -51,7 +52,8 @@ func (u *UserHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessToken, refreshToken, err := u.Usecase.Login(r.Context(), loginRequest.Email, loginRequest.Password)
+	ip, userAgent := req.GetClientMeta(r)
+	accessToken, refreshToken, err := u.Usecase.Login(r.Context(), loginRequest.Email, loginRequest.Password, ip, userAgent)
 	if err != nil {
 		msg := fmt.Sprintf("User login error: %v", err)
 		respond.WithError(w, http.StatusInternalServerError, msg, lgr)

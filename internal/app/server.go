@@ -16,7 +16,7 @@ func RunApp() error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	cfg, err := config.LoadConfig("config/config.yaml")
+	cfg, err := config.LoadConfig("config/config.yaml", ".env")
 	if err != nil {
 		return err
 	}
@@ -30,10 +30,9 @@ func RunApp() error {
 
 	go func() {
 		app.Logger.Info("Starting server...", slog.String("addr", app.Server.Addr))
-		if err = app.Server.ListenAndServe(); err != nil && !errors.Is(http.ErrServerClosed, err) {
-			app.Logger.Error("Server error", slog.Any("error", err))
-			errChan <- err
-			close(errChan) // На всякий случаи
+		if srvErr := app.Server.ListenAndServe(); srvErr != nil && !errors.Is(http.ErrServerClosed, srvErr) {
+			app.Logger.Error("Server error", slog.Any("error", srvErr))
+			errChan <- srvErr
 		}
 	}()
 
@@ -57,6 +56,14 @@ func RunApp() error {
 		err = app.DB.Close()
 		if err != nil {
 			app.Logger.Error("DB close failed", slog.Any("error", err))
+			return err
+		}
+	}
+
+	if app.RedisDB != nil {
+		err = app.RedisDB.Close()
+		if err != nil {
+			app.Logger.Error("RedisDB close failed", slog.Any("error", err))
 			return err
 		}
 	}
