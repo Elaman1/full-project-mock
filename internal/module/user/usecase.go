@@ -9,6 +9,7 @@ import (
 	"full-project-mock/internal/domain/repository"
 	"full-project-mock/internal/domain/usecase"
 	"full-project-mock/pkg/hasher"
+	"strconv"
 	"time"
 )
 
@@ -70,20 +71,24 @@ func (u *Usecase) Login(ctx context.Context, email, password, clientIP, ua strin
 		return "", "", err
 	}
 
+	return u.generateAccessAndRefreshToken(ctx, clientIP, ua, user)
+}
+
+func (u *Usecase) generateAccessAndRefreshToken(ctx context.Context, clientIP, ua string, user *model.User) (string, string, error) {
 	accessToken, err := u.TokenService.GenerateAccessToken(user)
 	if err != nil {
 		return "", "", err
 	}
 
-	refreshToken, plain, err := u.TokenService.GenerateRefreshToken()
+	refreshTokenId, plainToken, err := u.TokenService.GenerateRefreshToken()
 	if err != nil {
 		return "", "", err
 	}
 
 	sess := &domcache.RefreshSession{
 		UserID:    user.ID,
-		TokenID:   refreshToken,
-		TokenHash: hasher.Sha256Hex(plain),
+		TokenID:   refreshTokenId,
+		TokenHash: hasher.Sha256Hex(plainToken),
 		ExpiresAt: time.Now().Add(u.RefreshTtl),
 		IP:        clientIP,
 		UserAgent: ua,
@@ -94,5 +99,49 @@ func (u *Usecase) Login(ctx context.Context, email, password, clientIP, ua strin
 		return "", "", err
 	}
 
-	return accessToken, refreshToken, nil
+	return accessToken, plainToken, nil
+}
+
+func (u *Usecase) Refresh(ctx context.Context, accessToken, refreshToken, clientIP, ua string) (string, string, error) {
+	mapClaims, err := u.TokenService.ParseToken(accessToken)
+	if err != nil {
+		return "", "", err
+	}
+
+	if mapClaims.Subject == "" {
+		return "", "", fmt.Errorf("не найден пользователь")
+	}
+
+	userId, err := strconv.Atoi(mapClaims.Subject)
+	if err != nil {
+		return "", "", err
+	}
+
+	user, err := u.Rep.GetById(ctx, int64(userId))
+	if err != nil {
+		return "", "", err
+	}
+
+	refreshSession, err := u.SessionCache.GetSession(ctx, int64(userId), accessToken)
+	if err != nil {
+		return "", "", err
+	}
+
+	if refreshSession.ExpiresAt.Before(time.Now()) {
+		return "", "", fmt.Errorf("время истек заново авторизуйтесь")
+	}
+
+	if refreshSession.IP != clientIP {
+		return "", "", fmt.Errorf("авторизуйтесь еще раз")
+	}
+
+	if refreshSession.UserAgent != ua {
+		return "", "", fmt.Errorf("авторизуйтесь еще раз")
+	}
+
+	if hasher.Sha256Hex(refreshToken) != refreshSession.TokenHash {
+		return "", "", fmt.Errorf("авторизуйтесь еще раз")
+	}
+
+	return u.generateAccessAndRefreshToken(ctx, clientIP, ua, user)
 }

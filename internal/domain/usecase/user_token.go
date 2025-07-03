@@ -8,5 +8,5 @@ import (
 type TokenService interface {
 	GenerateAccessToken(user *model.User) (string, error)
 	GenerateRefreshToken() (tokenID, plainToken string, err error)
-	ParseToken(tokenStr string) (jwt.MapClaims, error)
+	ParseToken(tokenStr string) (jwt.RegisteredClaims, error)
 }

@@ -17,6 +17,7 @@ func InitRouter(ctx context.Context, routeApp *RouteApp, allModules *module.Modu
 
 	r.Post("/register", allModules.UserHandler.RegisterHandler)
 	r.Post("/login", allModules.UserHandler.LoginHandler)
+	r.Post("/refresh", allModules.UserHandler.RefreshHandler)
 
 	// auth group
 	r.Route("/auth", func(r chi.Router) {

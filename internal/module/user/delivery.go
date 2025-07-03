@@ -80,3 +80,31 @@ func (u *UserHandler) MeHandler(w http.ResponseWriter, r *http.Request) {
 		"error": "Not found",
 	})
 }
+
+func (u *UserHandler) RefreshHandler(w http.ResponseWriter, r *http.Request) {
+	lgr := service.LoggerFromContext(r.Context())
+
+	var refreshRequest RefreshTokenRequest
+	err := json.NewDecoder(r.Body).Decode(&refreshRequest)
+	if err != nil {
+		respond.WithError(w, http.StatusBadRequest, "Invalid request payload", lgr)
+		return
+	}
+
+	ip, userAgent := req.GetClientMeta(r)
+	accessToken, refreshToken, err := u.Usecase.Refresh(r.Context(), refreshRequest.AccessToken, refreshRequest.RefreshToken, ip, userAgent)
+	if err != nil {
+		msg := fmt.Sprintf("Refresh error: %v", err)
+		respond.WithError(w, http.StatusInternalServerError, msg, lgr)
+		return
+	}
+
+	respond.WithSuccessJSON(w, http.StatusCreated, map[string]string{
+		"access_token":  accessToken,
+		"refresh_token": refreshToken,
+	})
+}
+
+func (u *UserHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
+
+}

@@ -67,3 +67,21 @@ func (u *Repository) Exists(ctx context.Context, email string) (bool, error) {
 
 	return true, err
 }
+
+func (u *Repository) GetById(ctx context.Context, id int64) (*model.User, error) {
+	ctxTimeout, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	user := &model.User{}
+	err := u.DB.QueryRowContext(ctxTimeout, "SELECT id, email, name, password, created_at, role_id FROM users WHERE id = $1", id).
+		Scan(&user.ID, &user.Email, &user.Username, &user.Password, &user.CreatedAt, &user.RoleID)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("user not found")
+		}
+
+		return nil, fmt.Errorf("query error: %w", err)
+	}
+
+	return user, nil
+}

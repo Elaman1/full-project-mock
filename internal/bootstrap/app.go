@@ -81,7 +81,7 @@ func InitApp(ctx context.Context, cfg *config.Config) (*App, error) {
 		Server:  srv,
 		DB:      db, // Передаем, чтобы закрыть соединение при отключении сервера
 		Logger:  logs,
-		RedisDB: redisDB,
+		RedisDB: redisDB, // То же самое
 	}, nil
 }
 

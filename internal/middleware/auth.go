@@ -5,6 +5,7 @@ import (
 	"full-project-mock/internal/domain/usecase"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type contextKey string
@@ -27,13 +28,18 @@ func AuthMiddleware(tokenSvc usecase.TokenService) func(http.Handler) http.Handl
 
 			tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 
-			userID, err := tokenSvc.ParseToken(tokenStr)
+			mapClaims, err := tokenSvc.ParseToken(tokenStr)
 			if err != nil {
-				http.Error(w, "invalid or expired token", http.StatusUnauthorized)
+				http.Error(w, "invalid token", http.StatusUnauthorized)
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), userIDKey, userID)
+			if mapClaims.ExpiresAt != nil && mapClaims.ExpiresAt.Time.Before(time.Now()) {
+				http.Error(w, "expired token", http.StatusUnauthorized)
+				return
+			}
+
+			ctx := context.WithValue(r.Context(), userIDKey, mapClaims.Subject)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

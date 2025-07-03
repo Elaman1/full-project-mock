@@ -34,11 +34,9 @@ func (s *TokenService) GenerateAccessToken(user *model.User) (string, error) {
 		return "", errors.New("user is nil")
 	}
 
-	claims := jwt.MapClaims{
-		"sub":  strconv.Itoa(int(user.ID)),         // subject = user ID
-		"exp":  time.Now().Add(s.accessTTL).Unix(), // expiration
-		"iat":  time.Now().Unix(),                  // issued at
-		"role": user.Role,                          // возможно
+	claims := jwt.RegisteredClaims{
+		Subject:   strconv.Itoa(int(user.ID)),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.accessTTL)),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
@@ -56,8 +54,8 @@ func (s *TokenService) GenerateRefreshToken() (tokenID, plainToken string, err e
 	return
 }
 
-func (s *TokenService) ParseToken(tokenStr string) (jwt.MapClaims, error) {
-	claims := jwt.MapClaims{}
+func (s *TokenService) ParseToken(tokenStr string) (jwt.RegisteredClaims, error) {
+	claims := jwt.RegisteredClaims{}
 
 	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
@@ -66,21 +64,11 @@ func (s *TokenService) ParseToken(tokenStr string) (jwt.MapClaims, error) {
 		return s.publicKey, nil
 	})
 	if err != nil {
-		return nil, err
+		return claims, err
 	}
 
 	if !token.Valid {
-		return nil, fmt.Errorf("signature invalid")
-	}
-
-	// проверка exp вручную
-	exp, ok := claims["exp"].(float64)
-	if !ok {
-		return nil, fmt.Errorf("exp claim missing or wrong type")
-	}
-
-	if int64(exp) < time.Now().Unix() {
-		return nil, fmt.Errorf("token expired")
+		return claims, fmt.Errorf("signature invalid")
 	}
 
 	return claims, nil
