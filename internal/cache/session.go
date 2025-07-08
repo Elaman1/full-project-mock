@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"full-project-mock/internal/domain/cache"
 	"github.com/redis/go-redis/v9"
+	"strings"
 	"time"
 )
 
@@ -18,7 +19,7 @@ func NewSessionRedisRepository(redis *redis.Client) cache.SessionCache {
 }
 
 func (c *sessionCache) SaveSession(ctx context.Context, s *cache.RefreshSession, ttl time.Duration) error {
-	key := buildSessionKey(s.UserID, s.TokenID)
+	key := buildSessionKey(s.TokenID)
 
 	data, err := json.Marshal(s)
 	if err != nil {
@@ -31,11 +32,12 @@ func (c *sessionCache) SaveSession(ctx context.Context, s *cache.RefreshSession,
 
 	// Добавим tokenID в индекс (для DeleteAll)
 	indexKey := buildIndexKey(s.UserID)
-	return c.redis.SAdd(ctx, indexKey, s.TokenID).Err()
+	compound := fmt.Sprintf("%s:%s", s.TokenID, s.TokenHash)
+	return c.redis.SAdd(ctx, indexKey, compound).Err()
 }
 
-func (c *sessionCache) GetSession(ctx context.Context, userID int64, tokenID string) (*cache.RefreshSession, error) {
-	key := buildSessionKey(userID, tokenID)
+func (c *sessionCache) GetSession(ctx context.Context, tokenID string) (*cache.RefreshSession, error) {
+	key := buildSessionKey(tokenID)
 	data, err := c.redis.Get(ctx, key).Result()
 	if err != nil {
 		return nil, err
@@ -50,7 +52,7 @@ func (c *sessionCache) GetSession(ctx context.Context, userID int64, tokenID str
 }
 
 func (c *sessionCache) DeleteSession(ctx context.Context, userID int64, tokenID string) error {
-	key := buildSessionKey(userID, tokenID)
+	key := buildSessionKey(tokenID)
 	indexKey := buildIndexKey(userID)
 
 	pipe := c.redis.TxPipeline()
@@ -73,9 +75,14 @@ func (c *sessionCache) DeleteAllUserSessions(ctx context.Context, userID int64) 
 	}
 
 	pipe := c.redis.TxPipeline()
-	for _, tokenID := range tokenIDs {
-		key := buildSessionKey(userID, tokenID)
+	for _, compound := range tokenIDs {
+		parts := strings.SplitN(compound, ":", 2)
+		tokenID := parts[0]
+		tokenHash := parts[1]
+
+		key := buildSessionKey(tokenID)
 		pipe.Del(ctx, key)
+		pipe.Del(ctx, buildRefreshKey(tokenHash))
 	}
 	pipe.Del(ctx, indexKey)
 
@@ -83,12 +90,30 @@ func (c *sessionCache) DeleteAllUserSessions(ctx context.Context, userID int64) 
 	return err
 }
 
+// GetRefreshTokenId Через хэшированный refresh token получаю tokenId чтобы потом искать по ИД ключу в списке
+func (c *sessionCache) GetRefreshTokenId(ctx context.Context, hashedRefreshToken string) (string, error) {
+	data, err := c.redis.Get(ctx, buildRefreshKey(hashedRefreshToken)).Result()
+	return data, err
+}
+
+func (c *sessionCache) SetRefreshTokenId(ctx context.Context, hashedRefreshToken string, refreshTokenID string, ttl time.Duration) error {
+	return c.redis.Set(ctx, buildRefreshKey(hashedRefreshToken), refreshTokenID, ttl).Err()
+}
+
+func (c *sessionCache) DeleteRefreshTokenId(ctx context.Context, hashedRefreshToken string) error {
+	return c.redis.Del(ctx, buildRefreshKey(hashedRefreshToken)).Err()
+}
+
 // Формат ключа: auth:refresh:<userID>:<tokenID>
-func buildSessionKey(userID int64, tokenID string) string {
-	return fmt.Sprintf("auth:refresh:%d:%s", userID, tokenID)
+func buildSessionKey(tokenID string) string {
+	return fmt.Sprintf("auth:refresh:%s", tokenID)
 }
 
 // Формат index ключа: auth:refresh:index:<userID>
 func buildIndexKey(userID int64) string {
 	return fmt.Sprintf("auth:refresh:index:%d", userID)
+}
+
+func buildRefreshKey(hashRefreshToken string) string {
+	return fmt.Sprintf("auth:refresh_hash:%s", hashRefreshToken)
 }

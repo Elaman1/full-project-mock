@@ -7,9 +7,12 @@ import (
 
 type SessionCache interface {
 	SaveSession(ctx context.Context, s *RefreshSession, ttl time.Duration) error
-	GetSession(ctx context.Context, userID int64, tokenID string) (*RefreshSession, error)
+	GetSession(ctx context.Context, tokenID string) (*RefreshSession, error)
 	DeleteSession(ctx context.Context, userID int64, tokenID string) error
 	DeleteAllUserSessions(ctx context.Context, userID int64) error
+	GetRefreshTokenId(ctx context.Context, hashedRefreshToken string) (string, error)
+	SetRefreshTokenId(ctx context.Context, hashedRefreshToken string, refreshTokenID string, ttl time.Duration) error
+	DeleteRefreshTokenId(ctx context.Context, hashedRefreshToken string) error
 }
 
 type RefreshSession struct {

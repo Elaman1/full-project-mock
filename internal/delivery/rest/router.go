@@ -24,6 +24,8 @@ func InitRouter(ctx context.Context, routeApp *RouteApp, allModules *module.Modu
 		r.Use(middleware.AuthMiddleware(routeApp.TokenService))
 
 		r.Get("/me", allModules.UserHandler.MeHandler)
+		r.Post("/logout", allModules.UserHandler.LogoutHandler)
+		r.Post("/logout-all", allModules.UserHandler.LogoutAllHandler)
 	})
 
 	return r

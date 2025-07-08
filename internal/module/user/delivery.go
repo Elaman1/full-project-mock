@@ -106,5 +106,41 @@ func (u *UserHandler) RefreshHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (u *UserHandler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
+	lgr := service.LoggerFromContext(r.Context())
 
+	var refreshRequest RefreshTokenRequest
+	err := json.NewDecoder(r.Body).Decode(&refreshRequest)
+	if err != nil {
+		respond.WithError(w, http.StatusBadRequest, "Invalid request payload", lgr)
+		return
+	}
+
+	ip, userAgent := req.GetClientMeta(r)
+	err = u.Usecase.Logout(r.Context(), refreshRequest.RefreshToken, ip, userAgent)
+	if err != nil {
+		respond.WithError(w, http.StatusBadRequest, "error logout", lgr)
+		return
+	}
+
+	respond.WithSuccessJSON(w, http.StatusCreated, map[string]string{
+		"message": "Успешно вышли из аккаунта",
+	})
+}
+
+func (u *UserHandler) LogoutAllHandler(w http.ResponseWriter, r *http.Request) {
+	lgr := service.LoggerFromContext(r.Context())
+
+	var refreshRequest RefreshTokenRequest
+	err := json.NewDecoder(r.Body).Decode(&refreshRequest)
+	if err != nil {
+		respond.WithError(w, http.StatusBadRequest, "Invalid request payload", lgr)
+		return
+	}
+
+	ip, userAgent := req.GetClientMeta(r)
+	err = u.Usecase.LogoutAllDevices(r.Context(), refreshRequest.RefreshToken, ip, userAgent)
+	if err != nil {
+		respond.WithError(w, http.StatusBadRequest, "error logout all", lgr)
+		return
+	}
 }

@@ -46,7 +46,7 @@ func TestVerify(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err = Verify(tt.password, hash)
+			err = Verify(hash, tt.password)
 			if (err != nil) != tt.mustErr {
 				t.Errorf("Verify() error = %v, wantErr %v", err, tt.mustErr)
 			}
