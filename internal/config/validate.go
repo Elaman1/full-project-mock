@@ -128,10 +128,6 @@ func validateRedis(cfg *Config) error {
 		return errors.New("missing required configuration variable: redis_port")
 	}
 
-	if cfg.Redis.DB == 0 {
-		return errors.New("missing required configuration variable: redis_db")
-	}
-
 	return nil
 }
 

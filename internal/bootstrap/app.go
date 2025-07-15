@@ -96,7 +96,17 @@ func LoadRSAPrivateKey(path string) (*rsa.PrivateKey, error) {
 		return nil, errors.New("invalid PEM format for private key")
 	}
 
-	return x509.ParsePKCS1PrivateKey(block.Bytes)
+	parsedKey, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	rsaKey, ok := parsedKey.(*rsa.PrivateKey)
+	if !ok {
+		return nil, errors.New("parsed key is not an RSA private key")
+	}
+
+	return rsaKey, nil
 }
 
 func LoadRSAPublicKey(path string) (*rsa.PublicKey, error) {

@@ -16,7 +16,7 @@ func RunApp() error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	cfg, err := config.LoadConfig("config/config.yaml", ".env")
+	cfg, err := config.LoadConfig("./config/config.yaml", ".env")
 	if err != nil {
 		return err
 	}
