@@ -28,3 +28,7 @@ create table users
 
 alter table users
     owner to postgres;
+
+insert into roles (id, code, name)
+values (1, 'admin', 'Админ'),
+       (2, 'user', 'Пользователь');

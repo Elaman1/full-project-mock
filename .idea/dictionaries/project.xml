@@ -3,6 +3,7 @@
     <words>
       <w>appendonly</w>
       <w>domcache</w>
+      <w>execer</w>
       <w>initdb</w>
       <w>testdb</w>
       <w>usecase</w>

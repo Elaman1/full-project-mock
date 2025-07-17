@@ -11,10 +11,17 @@ import (
 )
 
 type Repository struct {
-	DB *sql.DB
+	DB DBExecutor
 }
 
-func NewUserRepository(db *sql.DB) repository.UserRepository {
+// DBExecutor Чтобы можно было или sql.DB || sql.Tx передавать
+type DBExecutor interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
+func NewUserRepository(db DBExecutor) repository.UserRepository {
 	return &Repository{
 		DB: db,
 	}
