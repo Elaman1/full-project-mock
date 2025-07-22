@@ -38,7 +38,7 @@ func TestRefreshHandler(t *testing.T) {
 			args: args{
 				body: `{"access_token":"access123","refresh_token":"refresh123"}`,
 				mockSetup: func(m *MockUserUsecase) {
-					m.On("Refresh", mock.Anything, "access123", "refresh123", "127.0.0.1", "test-agent").
+					m.On("Refresh", mock.Anything, "access123", "refresh123", ipAddress, "test-agent").
 						Return("", "", errors.New("invalid token")).Once()
 				},
 				expectedCode: http.StatusInternalServerError,
@@ -50,7 +50,7 @@ func TestRefreshHandler(t *testing.T) {
 			args: args{
 				body: `{"access_token":"access123","refresh_token":"refresh123"}`,
 				mockSetup: func(m *MockUserUsecase) {
-					m.On("Refresh", mock.Anything, "access123", "refresh123", "127.0.0.1", "test-agent").
+					m.On("Refresh", mock.Anything, "access123", "refresh123", ipAddress, "test-agent").
 						Return("new-access", "new-refresh", nil).Once()
 				},
 				expectedCode: http.StatusCreated,
@@ -68,7 +68,7 @@ func TestRefreshHandler(t *testing.T) {
 
 			req := httptest.NewRequest(http.MethodPost, "/refresh", strings.NewReader(tt.args.body))
 			req.Header.Set("User-Agent", "test-agent")
-			req.RemoteAddr = "127.0.0.1:12345"
+			req.RemoteAddr = ipAddress
 			req = req.WithContext(service.WithLogger(req.Context(), slog.Default()))
 
 			rec := httptest.NewRecorder()
