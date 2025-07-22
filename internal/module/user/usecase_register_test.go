@@ -32,8 +32,7 @@ func TestRegister_Success(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, int64(0), id)
 
-	mockRepo.AssertCalled(t, "Exists", ctx, defaultEmail)
-	mockRepo.AssertCalled(t, "Create", ctx, mock.AnythingOfType("*model.User"))
+	mockRepo.AssertExpectations(t)
 }
 
 func TestRegister_Exists(t *testing.T) {
@@ -50,7 +49,7 @@ func TestRegister_Exists(t *testing.T) {
 
 	assert.EqualError(t, err, fmt.Sprintf("пользователь с таким email %s уже существует", defaultEmail))
 
-	mockRepo.AssertCalled(t, "Exists", ctx, defaultEmail)
+	mockRepo.AssertExpectations(t)
 }
 
 func TestRegister_ExistsError(t *testing.T) {
@@ -67,6 +66,7 @@ func TestRegister_ExistsError(t *testing.T) {
 	_, err := uc.Register(ctx, defaultEmail, defaultUserName, defaultPassword)
 
 	assert.EqualError(t, err, customError.Error())
+	mockRepo.AssertExpectations(t)
 }
 
 func TestRegister_CreateError(t *testing.T) {
@@ -85,6 +85,7 @@ func TestRegister_CreateError(t *testing.T) {
 	_, err := uc.Register(ctx, defaultEmail, defaultUserName, defaultPassword)
 
 	assert.EqualError(t, err, "произошла ошибка при регистрации")
+	mockRepo.AssertExpectations(t)
 }
 
 type MockUserRepository struct {

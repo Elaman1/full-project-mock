@@ -12,8 +12,8 @@ func TestLogoutAllDevices_Success(t *testing.T) {
 	refreshSession := initRefreshSession()
 	hashed := hashRefreshToken(plainToken)
 
-	cacheSession.On("GetRefreshTokenId", ctx, hashed).Return(refreshtokenId, nil)
-	cacheSession.On("GetSession", ctx, refreshtokenId).Return(refreshSession, nil)
+	cacheSession.On("GetRefreshTokenId", ctx, hashed).Return(refreshTokenId, nil)
+	cacheSession.On("GetSession", ctx, refreshTokenId).Return(refreshSession, nil)
 	cacheSession.On("DeleteAllUserSessions", ctx, refreshSession.UserID).Return(nil)
 
 	uc := Usecase{
@@ -23,9 +23,7 @@ func TestLogoutAllDevices_Success(t *testing.T) {
 	err := uc.LogoutAllDevices(ctx, plainToken, clientIP, clientUserAgent)
 	assert.NoError(t, err)
 
-	cacheSession.AssertCalled(t, "GetRefreshTokenId", ctx, hashed)
-	cacheSession.AssertCalled(t, "GetSession", ctx, refreshtokenId)
-	cacheSession.AssertCalled(t, "DeleteAllUserSessions", ctx, refreshSession.UserID)
+	cacheSession.AssertExpectations(t)
 }
 
 func TestLogoutAllDevices_GetRefreshTokenIdError(t *testing.T) {
@@ -40,7 +38,7 @@ func TestLogoutAllDevices_GetRefreshTokenIdError(t *testing.T) {
 	err := uc.LogoutAllDevices(ctx, plainToken, clientIP, clientUserAgent)
 	assert.EqualError(t, err, customErr.Error())
 
-	cacheSession.AssertCalled(t, "GetRefreshTokenId", ctx, hashRefreshToken(plainToken))
+	cacheSession.AssertExpectations(t)
 }
 
 func TestLogoutAllDevices_GetSessionError(t *testing.T) {
@@ -48,8 +46,8 @@ func TestLogoutAllDevices_GetSessionError(t *testing.T) {
 	cacheSession := new(MockSessionCache)
 	refreshSession := initRefreshSession()
 
-	cacheSession.On("GetRefreshTokenId", ctx, hashRefreshToken(plainToken)).Return(refreshtokenId, nil)
-	cacheSession.On("GetSession", ctx, refreshtokenId).Return(refreshSession, customErr)
+	cacheSession.On("GetRefreshTokenId", ctx, hashRefreshToken(plainToken)).Return(refreshTokenId, nil)
+	cacheSession.On("GetSession", ctx, refreshTokenId).Return(refreshSession, customErr)
 
 	uc := Usecase{
 		SessionCache: cacheSession,
@@ -58,8 +56,7 @@ func TestLogoutAllDevices_GetSessionError(t *testing.T) {
 	err := uc.LogoutAllDevices(ctx, plainToken, clientIP, clientUserAgent)
 	assert.EqualError(t, err, customErr.Error())
 
-	cacheSession.AssertCalled(t, "GetRefreshTokenId", ctx, hashRefreshToken(plainToken))
-	cacheSession.AssertCalled(t, "GetSession", ctx, refreshtokenId)
+	cacheSession.AssertExpectations(t)
 }
 
 func TestLogoutAllDevices_DeleteAllUserSessions(t *testing.T) {
@@ -67,8 +64,8 @@ func TestLogoutAllDevices_DeleteAllUserSessions(t *testing.T) {
 	cacheSession := new(MockSessionCache)
 	refreshSession := initRefreshSession()
 
-	cacheSession.On("GetRefreshTokenId", ctx, hashRefreshToken(plainToken)).Return(refreshtokenId, nil)
-	cacheSession.On("GetSession", ctx, refreshtokenId).Return(refreshSession, nil)
+	cacheSession.On("GetRefreshTokenId", ctx, hashRefreshToken(plainToken)).Return(refreshTokenId, nil)
+	cacheSession.On("GetSession", ctx, refreshTokenId).Return(refreshSession, nil)
 	cacheSession.On("DeleteAllUserSessions", ctx, refreshSession.UserID).Return(customErr)
 
 	uc := Usecase{
@@ -78,7 +75,5 @@ func TestLogoutAllDevices_DeleteAllUserSessions(t *testing.T) {
 	err := uc.LogoutAllDevices(ctx, plainToken, clientIP, clientUserAgent)
 	assert.EqualError(t, err, customErr.Error())
 
-	cacheSession.AssertCalled(t, "GetRefreshTokenId", ctx, hashRefreshToken(plainToken))
-	cacheSession.AssertCalled(t, "GetSession", ctx, refreshtokenId)
-	cacheSession.AssertCalled(t, "DeleteAllUserSessions", ctx, refreshSession.UserID)
+	cacheSession.AssertExpectations(t)
 }

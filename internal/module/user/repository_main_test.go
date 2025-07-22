@@ -10,6 +10,7 @@ import (
 	"full-project-mock/internal/domain/model"
 	"full-project-mock/internal/domain/repository"
 	"full-project-mock/pkg/hasher"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 	"os"
@@ -59,8 +60,8 @@ func TestExists(t *testing.T) {
 	user, repo, err := createTestUser(t, ctx, 2)
 	require.NoError(t, err)
 	ok, err := repo.Exists(ctx, user.Email)
-	require.NoError(t, err)
-	require.True(t, ok)
+	assert.NoError(t, err)
+	assert.True(t, ok)
 }
 
 func TestGetById(t *testing.T) {
@@ -72,9 +73,9 @@ func TestGetById(t *testing.T) {
 	require.NoError(t, err)
 
 	foundedUser, err := repo.GetById(ctx, savedUser.ID)
-	require.NoError(t, err)
-	require.Equal(t, savedUser.ID, foundedUser.ID)
-	require.Equal(t, savedUser.Email, foundedUser.Email)
+	assert.NoError(t, err)
+	assert.Equal(t, savedUser.ID, foundedUser.ID)
+	assert.Equal(t, savedUser.Email, foundedUser.Email)
 }
 
 func createTestUser(t *testing.T, ctx context.Context, prefix int) (*model.User, repository.UserRepository, error) {

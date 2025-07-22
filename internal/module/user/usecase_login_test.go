@@ -5,8 +5,8 @@ import (
 	"errors"
 	"full-project-mock/internal/domain/cache"
 	"full-project-mock/internal/domain/model"
+	"full-project-mock/internal/mocks"
 	"full-project-mock/pkg/hasher"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
@@ -19,7 +19,7 @@ var (
 	clientIP        = "127.0.0.1"
 
 	accessToken    = "testAccessToken"
-	refreshtokenId = "testTokenId"
+	refreshTokenId = "testTokenId"
 	plainToken     = "testPlainToken"
 
 	defaultUserId = 11
@@ -30,7 +30,7 @@ var (
 func TestLogin_Success(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockUserRepository)
-	tokenService := new(MockTokenService)
+	tokenService := new(mocks.MockTokenService)
 	cacheSession := new(MockSessionCache)
 
 	user, err := initUserWithPassword()
@@ -40,8 +40,8 @@ func TestLogin_Success(t *testing.T) {
 
 	mockRepo.On("Get", ctx, defaultEmail).Return(user, nil)
 	tokenService.On("GenerateAccessToken", mock.AnythingOfType("*model.User")).Return(accessToken, nil)
-	tokenService.On("GenerateRefreshToken").Return(refreshtokenId, plainToken, nil)
-	cacheSession.On("SetRefreshTokenId", ctx, mock.Anything, refreshtokenId, mock.Anything).Return(nil)
+	tokenService.On("GenerateRefreshToken").Return(refreshTokenId, plainToken, nil)
+	cacheSession.On("SetRefreshTokenId", ctx, mock.Anything, refreshTokenId, mock.Anything).Return(nil)
 	cacheSession.On("SaveSession", ctx, mock.AnythingOfType("*cache.RefreshSession"), mock.Anything).Return(nil)
 
 	uc := Usecase{
@@ -55,11 +55,9 @@ func TestLogin_Success(t *testing.T) {
 	assert.Equal(t, ac, accessToken)
 	assert.Equal(t, pl, plainToken)
 
-	mockRepo.AssertCalled(t, "Get", ctx, defaultEmail)
-	tokenService.AssertCalled(t, "GenerateAccessToken", mock.AnythingOfType("*model.User"))
-	tokenService.AssertCalled(t, "GenerateRefreshToken")
-	cacheSession.AssertCalled(t, "SetRefreshTokenId", ctx, mock.Anything, refreshtokenId, mock.Anything)
-	cacheSession.AssertCalled(t, "SaveSession", ctx, mock.AnythingOfType("*cache.RefreshSession"), mock.Anything)
+	mockRepo.AssertExpectations(t)
+	tokenService.AssertExpectations(t)
+	cacheSession.AssertExpectations(t)
 }
 
 func TestLogin_GetError(t *testing.T) {
@@ -78,13 +76,13 @@ func TestLogin_GetError(t *testing.T) {
 	assert.Equal(t, ac, "")
 	assert.Equal(t, pl, "")
 
-	mockRepo.AssertCalled(t, "Get", ctx, defaultEmail)
+	mockRepo.AssertExpectations(t)
 }
 
 func TestLogin_GenerateAccessTokenError(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockUserRepository)
-	tokenService := new(MockTokenService)
+	tokenService := new(mocks.MockTokenService)
 
 	user, err := initUserWithPassword()
 	if err != nil {
@@ -103,14 +101,14 @@ func TestLogin_GenerateAccessTokenError(t *testing.T) {
 	assert.EqualError(t, err, customErr.Error())
 	assert.Equal(t, ac, "")
 	assert.Equal(t, pl, "")
-	mockRepo.AssertCalled(t, "Get", ctx, defaultEmail)
-	tokenService.AssertCalled(t, "GenerateAccessToken", mock.AnythingOfType("*model.User"))
+	mockRepo.AssertExpectations(t)
+	tokenService.AssertExpectations(t)
 }
 
 func TestLogin_GenerateRefreshTokenError(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockUserRepository)
-	tokenService := new(MockTokenService)
+	tokenService := new(mocks.MockTokenService)
 
 	user, err := initUserWithPassword()
 	if err != nil {
@@ -131,15 +129,14 @@ func TestLogin_GenerateRefreshTokenError(t *testing.T) {
 	assert.Equal(t, ac, "")
 	assert.Equal(t, pl, "")
 
-	mockRepo.AssertCalled(t, "Get", ctx, defaultEmail)
-	tokenService.AssertCalled(t, "GenerateAccessToken", mock.AnythingOfType("*model.User"))
-	tokenService.AssertCalled(t, "GenerateRefreshToken")
+	mockRepo.AssertExpectations(t)
+	tokenService.AssertExpectations(t)
 }
 
 func TestLogin_SetRefreshTokenIdError(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockUserRepository)
-	tokenService := new(MockTokenService)
+	tokenService := new(mocks.MockTokenService)
 	cacheSession := new(MockSessionCache)
 
 	user, err := initUserWithPassword()
@@ -151,8 +148,8 @@ func TestLogin_SetRefreshTokenIdError(t *testing.T) {
 
 	mockRepo.On("Get", ctx, defaultEmail).Return(user, nil)
 	tokenService.On("GenerateAccessToken", mock.AnythingOfType("*model.User")).Return(accessToken, nil)
-	tokenService.On("GenerateRefreshToken").Return(refreshtokenId, plainToken, nil)
-	cacheSession.On("SetRefreshTokenId", ctx, mock.Anything, refreshtokenId, mock.Anything).Return(customErr)
+	tokenService.On("GenerateRefreshToken").Return(refreshTokenId, plainToken, nil)
+	cacheSession.On("SetRefreshTokenId", ctx, mock.Anything, refreshTokenId, mock.Anything).Return(customErr)
 
 	uc := Usecase{
 		Rep:          mockRepo,
@@ -164,16 +161,15 @@ func TestLogin_SetRefreshTokenIdError(t *testing.T) {
 	assert.EqualError(t, err, customErr.Error())
 	assert.Equal(t, ac, "")
 	assert.Equal(t, pl, "")
-	mockRepo.AssertCalled(t, "Get", ctx, defaultEmail)
-	tokenService.AssertCalled(t, "GenerateAccessToken", mock.AnythingOfType("*model.User"))
-	tokenService.AssertCalled(t, "GenerateRefreshToken")
-	cacheSession.AssertCalled(t, "SetRefreshTokenId", ctx, mock.Anything, refreshtokenId, mock.Anything)
+	mockRepo.AssertExpectations(t)
+	tokenService.AssertExpectations(t)
+	cacheSession.AssertExpectations(t)
 }
 
 func TestLogin_SaveSessionError(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockUserRepository)
-	tokenService := new(MockTokenService)
+	tokenService := new(mocks.MockTokenService)
 	cacheSession := new(MockSessionCache)
 
 	user, err := initUserWithPassword()
@@ -183,8 +179,8 @@ func TestLogin_SaveSessionError(t *testing.T) {
 
 	mockRepo.On("Get", ctx, defaultEmail).Return(user, nil)
 	tokenService.On("GenerateAccessToken", mock.AnythingOfType("*model.User")).Return(accessToken, nil)
-	tokenService.On("GenerateRefreshToken").Return(refreshtokenId, plainToken, nil)
-	cacheSession.On("SetRefreshTokenId", ctx, mock.Anything, refreshtokenId, mock.Anything).Return(nil)
+	tokenService.On("GenerateRefreshToken").Return(refreshTokenId, plainToken, nil)
+	cacheSession.On("SetRefreshTokenId", ctx, mock.Anything, refreshTokenId, mock.Anything).Return(nil)
 	cacheSession.On("SaveSession", ctx, mock.Anything, mock.Anything).Return(customErr)
 
 	uc := Usecase{
@@ -197,35 +193,9 @@ func TestLogin_SaveSessionError(t *testing.T) {
 	assert.EqualError(t, err, customErr.Error())
 	assert.Equal(t, ac, "")
 	assert.Equal(t, pl, "")
-	mockRepo.AssertCalled(t, "Get", ctx, defaultEmail)
-	tokenService.AssertCalled(t, "GenerateAccessToken", mock.AnythingOfType("*model.User"))
-	tokenService.AssertCalled(t, "GenerateRefreshToken")
-	cacheSession.AssertCalled(t, "SetRefreshTokenId", ctx, mock.Anything, refreshtokenId, mock.Anything)
-	cacheSession.AssertCalled(t, "SaveSession", ctx, mock.Anything, mock.Anything)
-}
-
-type MockTokenService struct {
-	mock.Mock
-}
-
-func (m *MockTokenService) GenerateAccessToken(user *model.User) (string, error) {
-	args := m.Called(user)
-	return args.String(0), args.Error(1)
-}
-
-func (m *MockTokenService) GenerateRefreshToken() (tokenID, plainToken string, err error) {
-	args := m.Called()
-	return args.String(0), args.String(1), args.Error(2)
-}
-
-func (m *MockTokenService) ParseToken(tokenStr string) (jwt.RegisteredClaims, error) {
-	args := m.Called(tokenStr)
-	jwtClaims, ok := args.Get(0).(jwt.RegisteredClaims)
-	if !ok {
-		return jwt.RegisteredClaims{}, errors.New("invalid token")
-	}
-
-	return jwtClaims, args.Error(1)
+	mockRepo.AssertExpectations(t)
+	tokenService.AssertExpectations(t)
+	cacheSession.AssertExpectations(t)
 }
 
 type MockSessionCache struct {

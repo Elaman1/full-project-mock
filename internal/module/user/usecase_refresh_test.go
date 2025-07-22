@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"full-project-mock/internal/domain/cache"
+	"full-project-mock/internal/mocks"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -14,7 +15,7 @@ import (
 func TestRefresh_Success(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockUserRepository)
-	tokenService := new(MockTokenService)
+	tokenService := new(mocks.MockTokenService)
 	cacheSession := new(MockSessionCache)
 
 	regClaims := initRegisteredClaims()
@@ -26,11 +27,11 @@ func TestRefresh_Success(t *testing.T) {
 
 	tokenService.On("ParseToken", accessToken).Return(regClaims, nil)
 	mockRepo.On("GetById", ctx, int64(defaultUserId)).Return(user, nil)
-	cacheSession.On("GetRefreshTokenId", ctx, hashRefreshToken(plainToken)).Return(refreshtokenId, nil)
-	cacheSession.On("GetSession", ctx, refreshtokenId).Return(refreshSession, nil)
+	cacheSession.On("GetRefreshTokenId", ctx, hashRefreshToken(plainToken)).Return(refreshTokenId, nil)
+	cacheSession.On("GetSession", ctx, refreshTokenId).Return(refreshSession, nil)
 	tokenService.On("GenerateAccessToken", user).Return(accessToken, nil)
-	tokenService.On("GenerateRefreshToken").Return(refreshtokenId, plainToken, nil)
-	cacheSession.On("SetRefreshTokenId", ctx, hashRefreshToken(plainToken), refreshtokenId, mock.Anything).Return(nil)
+	tokenService.On("GenerateRefreshToken").Return(refreshTokenId, plainToken, nil)
+	cacheSession.On("SetRefreshTokenId", ctx, hashRefreshToken(plainToken), refreshTokenId, mock.Anything).Return(nil)
 	cacheSession.On("SaveSession", ctx, mock.AnythingOfType("*cache.RefreshSession"), mock.Anything).Return(nil)
 
 	uc := Usecase{
@@ -44,19 +45,14 @@ func TestRefresh_Success(t *testing.T) {
 	assert.Equal(t, accToken, accessToken)
 	assert.Equal(t, plnToken, plainToken)
 
-	tokenService.AssertCalled(t, "ParseToken", accessToken)
-	mockRepo.AssertCalled(t, "GetById", ctx, int64(defaultUserId))
-	cacheSession.AssertCalled(t, "GetRefreshTokenId", ctx, hashRefreshToken(plainToken))
-	cacheSession.AssertCalled(t, "GetSession", ctx, refreshtokenId)
-	tokenService.AssertCalled(t, "GenerateAccessToken", user)
-	tokenService.AssertCalled(t, "GenerateRefreshToken")
-	cacheSession.AssertCalled(t, "SetRefreshTokenId", ctx, hashRefreshToken(plainToken), refreshtokenId, mock.Anything)
-	cacheSession.AssertCalled(t, "SaveSession", ctx, mock.AnythingOfType("*cache.RefreshSession"), mock.Anything)
+	tokenService.AssertExpectations(t)
+	mockRepo.AssertExpectations(t)
+	cacheSession.AssertExpectations(t)
 }
 
 func TestRefresh_ParseTokenError(t *testing.T) {
 	ctx := context.Background()
-	tokenService := new(MockTokenService)
+	tokenService := new(mocks.MockTokenService)
 	regClaims := initRegisteredClaims()
 
 	tokenService.On("ParseToken", accessToken).Return(regClaims, customErr)
@@ -70,12 +66,12 @@ func TestRefresh_ParseTokenError(t *testing.T) {
 	assert.Equal(t, accToken, "")
 	assert.Equal(t, plnToken, "")
 
-	tokenService.AssertCalled(t, "ParseToken", accessToken)
+	tokenService.AssertExpectations(t)
 }
 
 func TestRefresh_GetById(t *testing.T) {
 	ctx := context.Background()
-	tokenService := new(MockTokenService)
+	tokenService := new(mocks.MockTokenService)
 	mockRepo := new(MockUserRepository)
 
 	regClaims := initRegisteredClaims()
@@ -97,13 +93,13 @@ func TestRefresh_GetById(t *testing.T) {
 	assert.Equal(t, accToken, "")
 	assert.Equal(t, plnToken, "")
 
-	tokenService.AssertCalled(t, "ParseToken", accessToken)
-	mockRepo.AssertCalled(t, "GetById", ctx, int64(defaultUserId))
+	tokenService.AssertExpectations(t)
+	mockRepo.AssertExpectations(t)
 }
 
 func TestRefresh_GetRefreshTokenIdError(t *testing.T) {
 	ctx := context.Background()
-	tokenService := new(MockTokenService)
+	tokenService := new(mocks.MockTokenService)
 	mockRepo := new(MockUserRepository)
 	cacheSession := new(MockSessionCache)
 
@@ -116,7 +112,7 @@ func TestRefresh_GetRefreshTokenIdError(t *testing.T) {
 	hashed := hashRefreshToken(plainToken)
 	tokenService.On("ParseToken", accessToken).Return(regClaims, nil)
 	mockRepo.On("GetById", ctx, int64(defaultUserId)).Return(user, nil)
-	cacheSession.On("GetRefreshTokenId", ctx, hashed).Return(refreshtokenId, customErr)
+	cacheSession.On("GetRefreshTokenId", ctx, hashed).Return(refreshTokenId, customErr)
 
 	uc := Usecase{
 		TokenService: tokenService,
@@ -129,14 +125,14 @@ func TestRefresh_GetRefreshTokenIdError(t *testing.T) {
 	assert.Equal(t, accToken, "")
 	assert.Equal(t, plnToken, "")
 
-	tokenService.AssertCalled(t, "ParseToken", accessToken)
-	mockRepo.AssertCalled(t, "GetById", ctx, int64(defaultUserId))
-	cacheSession.AssertCalled(t, "GetRefreshTokenId", ctx, hashed)
+	tokenService.AssertExpectations(t)
+	mockRepo.AssertExpectations(t)
+	cacheSession.AssertExpectations(t)
 }
 
 func TestRefresh_GetSessionError(t *testing.T) {
 	ctx := context.Background()
-	tokenService := new(MockTokenService)
+	tokenService := new(mocks.MockTokenService)
 	mockRepo := new(MockUserRepository)
 	cacheSession := new(MockSessionCache)
 
@@ -148,8 +144,8 @@ func TestRefresh_GetSessionError(t *testing.T) {
 
 	tokenService.On("ParseToken", accessToken).Return(regClaims, nil)
 	mockRepo.On("GetById", ctx, int64(defaultUserId)).Return(user, nil)
-	cacheSession.On("GetRefreshTokenId", ctx, hashRefreshToken(plainToken)).Return(refreshtokenId, nil)
-	cacheSession.On("GetSession", ctx, refreshtokenId).Return(nil, customErr)
+	cacheSession.On("GetRefreshTokenId", ctx, hashRefreshToken(plainToken)).Return(refreshTokenId, nil)
+	cacheSession.On("GetSession", ctx, refreshTokenId).Return(nil, customErr)
 
 	uc := Usecase{
 		TokenService: tokenService,
@@ -162,16 +158,15 @@ func TestRefresh_GetSessionError(t *testing.T) {
 	assert.Equal(t, accToken, "")
 	assert.Equal(t, plnToken, "")
 
-	tokenService.AssertCalled(t, "ParseToken", accessToken)
-	mockRepo.AssertCalled(t, "GetById", ctx, int64(defaultUserId))
-	cacheSession.AssertCalled(t, "GetRefreshTokenId", ctx, hashRefreshToken(plainToken))
-	cacheSession.AssertCalled(t, "GetSession", ctx, refreshtokenId)
+	tokenService.AssertExpectations(t)
+	mockRepo.AssertExpectations(t)
+	cacheSession.AssertExpectations(t)
 }
 
 func TestRefresh_GenerateAccessTokenError(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockUserRepository)
-	tokenService := new(MockTokenService)
+	tokenService := new(mocks.MockTokenService)
 	cacheSession := new(MockSessionCache)
 
 	regClaims := initRegisteredClaims()
@@ -183,8 +178,8 @@ func TestRefresh_GenerateAccessTokenError(t *testing.T) {
 
 	tokenService.On("ParseToken", accessToken).Return(regClaims, nil)
 	mockRepo.On("GetById", ctx, int64(defaultUserId)).Return(user, nil)
-	cacheSession.On("GetRefreshTokenId", ctx, hashRefreshToken(plainToken)).Return(refreshtokenId, nil)
-	cacheSession.On("GetSession", ctx, refreshtokenId).Return(refreshSession, nil)
+	cacheSession.On("GetRefreshTokenId", ctx, hashRefreshToken(plainToken)).Return(refreshTokenId, nil)
+	cacheSession.On("GetSession", ctx, refreshTokenId).Return(refreshSession, nil)
 	tokenService.On("GenerateAccessToken", mock.AnythingOfType("*model.User")).Return(accessToken, customErr)
 
 	uc := Usecase{
@@ -198,17 +193,15 @@ func TestRefresh_GenerateAccessTokenError(t *testing.T) {
 	assert.Equal(t, accToken, "")
 	assert.Equal(t, plnToken, "")
 
-	tokenService.AssertCalled(t, "ParseToken", accessToken)
-	mockRepo.AssertCalled(t, "GetById", ctx, int64(defaultUserId))
-	cacheSession.AssertCalled(t, "GetRefreshTokenId", ctx, hashRefreshToken(plainToken))
-	cacheSession.AssertCalled(t, "GetSession", ctx, refreshtokenId)
-	tokenService.AssertCalled(t, "GenerateAccessToken", mock.AnythingOfType("*model.User"))
+	tokenService.AssertExpectations(t)
+	mockRepo.AssertExpectations(t)
+	cacheSession.AssertExpectations(t)
 }
 
 func TestRefresh_GenerateRefreshTokenError(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockUserRepository)
-	tokenService := new(MockTokenService)
+	tokenService := new(mocks.MockTokenService)
 	cacheSession := new(MockSessionCache)
 
 	regClaims := initRegisteredClaims()
@@ -220,10 +213,10 @@ func TestRefresh_GenerateRefreshTokenError(t *testing.T) {
 
 	tokenService.On("ParseToken", accessToken).Return(regClaims, nil)
 	mockRepo.On("GetById", ctx, int64(defaultUserId)).Return(user, nil)
-	cacheSession.On("GetRefreshTokenId", ctx, hashRefreshToken(plainToken)).Return(refreshtokenId, nil)
-	cacheSession.On("GetSession", ctx, refreshtokenId).Return(refreshSession, nil)
+	cacheSession.On("GetRefreshTokenId", ctx, hashRefreshToken(plainToken)).Return(refreshTokenId, nil)
+	cacheSession.On("GetSession", ctx, refreshTokenId).Return(refreshSession, nil)
 	tokenService.On("GenerateAccessToken", mock.AnythingOfType("*model.User")).Return(accessToken, nil)
-	tokenService.On("GenerateRefreshToken").Return(refreshtokenId, plainToken, customErr)
+	tokenService.On("GenerateRefreshToken").Return(refreshTokenId, plainToken, customErr)
 
 	uc := Usecase{
 		TokenService: tokenService,
@@ -236,18 +229,15 @@ func TestRefresh_GenerateRefreshTokenError(t *testing.T) {
 	assert.Equal(t, accToken, "")
 	assert.Equal(t, plnToken, "")
 
-	tokenService.AssertCalled(t, "ParseToken", accessToken)
-	mockRepo.AssertCalled(t, "GetById", ctx, int64(defaultUserId))
-	cacheSession.AssertCalled(t, "GetRefreshTokenId", ctx, hashRefreshToken(plainToken))
-	cacheSession.AssertCalled(t, "GetSession", ctx, refreshtokenId)
-	tokenService.AssertCalled(t, "GenerateAccessToken", mock.AnythingOfType("*model.User"))
-	tokenService.AssertCalled(t, "GenerateRefreshToken")
+	tokenService.AssertExpectations(t)
+	mockRepo.AssertExpectations(t)
+	cacheSession.AssertExpectations(t)
 }
 
 func TestRefresh_SetRefreshTokenIdError(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockUserRepository)
-	tokenService := new(MockTokenService)
+	tokenService := new(mocks.MockTokenService)
 	cacheSession := new(MockSessionCache)
 
 	regClaims := initRegisteredClaims()
@@ -259,11 +249,11 @@ func TestRefresh_SetRefreshTokenIdError(t *testing.T) {
 
 	tokenService.On("ParseToken", accessToken).Return(regClaims, nil)
 	mockRepo.On("GetById", ctx, int64(defaultUserId)).Return(user, nil)
-	cacheSession.On("GetRefreshTokenId", ctx, hashRefreshToken(plainToken)).Return(refreshtokenId, nil)
-	cacheSession.On("GetSession", ctx, refreshtokenId).Return(refreshSession, nil)
+	cacheSession.On("GetRefreshTokenId", ctx, hashRefreshToken(plainToken)).Return(refreshTokenId, nil)
+	cacheSession.On("GetSession", ctx, refreshTokenId).Return(refreshSession, nil)
 	tokenService.On("GenerateAccessToken", mock.AnythingOfType("*model.User")).Return(accessToken, nil)
-	tokenService.On("GenerateRefreshToken").Return(refreshtokenId, plainToken, nil)
-	cacheSession.On("SetRefreshTokenId", ctx, hashRefreshToken(plainToken), refreshtokenId, mock.Anything).Return(customErr)
+	tokenService.On("GenerateRefreshToken").Return(refreshTokenId, plainToken, nil)
+	cacheSession.On("SetRefreshTokenId", ctx, hashRefreshToken(plainToken), refreshTokenId, mock.Anything).Return(customErr)
 
 	uc := Usecase{
 		TokenService: tokenService,
@@ -276,19 +266,15 @@ func TestRefresh_SetRefreshTokenIdError(t *testing.T) {
 	assert.Equal(t, accToken, "")
 	assert.Equal(t, plnToken, "")
 
-	tokenService.AssertCalled(t, "ParseToken", accessToken)
-	mockRepo.AssertCalled(t, "GetById", ctx, int64(defaultUserId))
-	cacheSession.AssertCalled(t, "GetRefreshTokenId", ctx, hashRefreshToken(plainToken))
-	cacheSession.AssertCalled(t, "GetSession", ctx, refreshtokenId)
-	tokenService.AssertCalled(t, "GenerateAccessToken", mock.AnythingOfType("*model.User"))
-	tokenService.AssertCalled(t, "GenerateRefreshToken")
-	cacheSession.AssertCalled(t, "SetRefreshTokenId", ctx, hashRefreshToken(plainToken), refreshtokenId, mock.Anything)
+	tokenService.AssertExpectations(t)
+	mockRepo.AssertExpectations(t)
+	cacheSession.AssertExpectations(t)
 }
 
 func TestRefresh_SaveSessionError(t *testing.T) {
 	ctx := context.Background()
 	mockRepo := new(MockUserRepository)
-	tokenService := new(MockTokenService)
+	tokenService := new(mocks.MockTokenService)
 	cacheSession := new(MockSessionCache)
 
 	regClaims := initRegisteredClaims()
@@ -301,11 +287,11 @@ func TestRefresh_SaveSessionError(t *testing.T) {
 	hashed := hashRefreshToken(plainToken)
 	tokenService.On("ParseToken", accessToken).Return(regClaims, nil)
 	mockRepo.On("GetById", ctx, int64(defaultUserId)).Return(user, nil)
-	cacheSession.On("GetRefreshTokenId", ctx, hashed).Return(refreshtokenId, nil)
-	cacheSession.On("GetSession", ctx, refreshtokenId).Return(refreshSession, nil)
+	cacheSession.On("GetRefreshTokenId", ctx, hashed).Return(refreshTokenId, nil)
+	cacheSession.On("GetSession", ctx, refreshTokenId).Return(refreshSession, nil)
 	tokenService.On("GenerateAccessToken", mock.AnythingOfType("*model.User")).Return(accessToken, nil)
-	tokenService.On("GenerateRefreshToken").Return(refreshtokenId, plainToken, nil)
-	cacheSession.On("SetRefreshTokenId", ctx, hashed, refreshtokenId, mock.Anything).Return(nil)
+	tokenService.On("GenerateRefreshToken").Return(refreshTokenId, plainToken, nil)
+	cacheSession.On("SetRefreshTokenId", ctx, hashed, refreshTokenId, mock.Anything).Return(nil)
 	cacheSession.On("SaveSession", ctx, mock.AnythingOfType("*cache.RefreshSession"), mock.Anything).Return(customErr)
 
 	uc := Usecase{
@@ -319,14 +305,9 @@ func TestRefresh_SaveSessionError(t *testing.T) {
 	assert.Equal(t, accToken, "")
 	assert.Equal(t, plnToken, "")
 
-	tokenService.AssertCalled(t, "ParseToken", accessToken)
-	mockRepo.AssertCalled(t, "GetById", ctx, int64(defaultUserId))
-	cacheSession.AssertCalled(t, "GetRefreshTokenId", ctx, hashed)
-	cacheSession.AssertCalled(t, "GetSession", ctx, refreshtokenId)
-	tokenService.AssertCalled(t, "GenerateAccessToken", mock.AnythingOfType("*model.User"))
-	tokenService.AssertCalled(t, "GenerateRefreshToken")
-	cacheSession.AssertCalled(t, "SetRefreshTokenId", ctx, hashed, refreshtokenId, mock.Anything)
-	cacheSession.AssertCalled(t, "SaveSession", ctx, mock.AnythingOfType("*cache.RefreshSession"), mock.Anything)
+	tokenService.AssertExpectations(t)
+	mockRepo.AssertExpectations(t)
+	cacheSession.AssertExpectations(t)
 }
 
 func initRegisteredClaims() jwt.RegisteredClaims {
@@ -339,7 +320,7 @@ func initRefreshSession() *cache.RefreshSession {
 	return &cache.RefreshSession{
 		UserID:    int64(defaultUserId),
 		ExpiresAt: time.Now().Add(time.Minute * 10),
-		TokenID:   refreshtokenId,
+		TokenID:   refreshTokenId,
 		TokenHash: hashRefreshToken(plainToken),
 		UserAgent: clientUserAgent,
 		IP:        clientIP,
