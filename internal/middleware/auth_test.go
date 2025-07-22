@@ -17,16 +17,6 @@ const (
 	testUserID = "123"
 )
 
-// Вспомогательный handler, который проверяет наличие userID в контексте
-func newTestHandler(t *testing.T) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		uid, ok := GetUserIDFromContext(r.Context())
-		require.True(t, ok)
-		require.Equal(t, testUserID, uid)
-		w.WriteHeader(http.StatusOK)
-	})
-}
-
 func TestAuthMiddleware(t *testing.T) {
 	type testCase struct {
 		name              string
@@ -34,6 +24,7 @@ func TestAuthMiddleware(t *testing.T) {
 		mockParseResponse jwt.RegisteredClaims
 		mockParseErr      error
 		expectedStatus    int
+		expectedBody      string
 		expectNextCalled  bool
 	}
 
@@ -52,12 +43,14 @@ func TestAuthMiddleware(t *testing.T) {
 			name:             "missing authorization header",
 			authHeader:       "",
 			expectedStatus:   http.StatusUnauthorized,
+			expectedBody:     "missing or invalid Authorization header",
 			expectNextCalled: false,
 		},
 		{
 			name:             "invalid authorization format",
 			authHeader:       "InvalidFormat token",
 			expectedStatus:   http.StatusUnauthorized,
+			expectedBody:     "missing or invalid Authorization header",
 			expectNextCalled: false,
 		},
 		{
@@ -65,6 +58,7 @@ func TestAuthMiddleware(t *testing.T) {
 			authHeader:       "Bearer bad-token",
 			mockParseErr:     errors.New("invalid token"),
 			expectedStatus:   http.StatusUnauthorized,
+			expectedBody:     "invalid token",
 			expectNextCalled: false,
 		},
 		{
@@ -72,6 +66,15 @@ func TestAuthMiddleware(t *testing.T) {
 			authHeader:        "Bearer expired-token",
 			mockParseResponse: expiredClaims,
 			expectedStatus:    http.StatusUnauthorized,
+			expectedBody:      "expired token",
+			expectNextCalled:  false,
+		},
+		{
+			name:              "empty subject",
+			authHeader:        "Bearer empty-subject",
+			mockParseResponse: jwt.RegisteredClaims{Subject: "", ExpiresAt: jwt.NewNumericDate(now.Add(10 * time.Minute))},
+			expectedStatus:    http.StatusUnauthorized,
+			expectedBody:      "invalid token: empty subject",
 			expectNextCalled:  false,
 		},
 		{
@@ -79,26 +82,34 @@ func TestAuthMiddleware(t *testing.T) {
 			authHeader:        "Bearer good-token",
 			mockParseResponse: validClaims,
 			expectedStatus:    http.StatusOK,
+			expectedBody:      "",
 			expectNextCalled:  true,
 		},
 	}
 
-	for _, tc := range tests {
+	for _, tt := range tests {
+		tc := tt
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
 			mockTokenSvc := new(mocks.MockTokenService)
 
-			// если ожидается вызов ParseToken — настраиваем мок
+			// Мокаем ParseToken, если передан header
 			if tc.authHeader != "" && strings.HasPrefix(tc.authHeader, "Bearer ") {
 				tokenStr := strings.TrimPrefix(tc.authHeader, "Bearer ")
 				mockTokenSvc.On("ParseToken", tokenStr).
 					Return(tc.mockParseResponse, tc.mockParseErr).Maybe()
 			}
 
-			// фиксируем был ли вызван следующий handler
 			nextCalled := false
 			nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				nextCalled = true
-				newTestHandler(t).ServeHTTP(w, r)
+
+				uid, ok := GetUserIDFromContext(r.Context())
+				require.True(t, ok)
+				require.Equal(t, testUserID, uid)
+
+				w.WriteHeader(http.StatusOK)
 			})
 
 			req := httptest.NewRequest(http.MethodGet, "/protected", nil)
@@ -113,6 +124,12 @@ func TestAuthMiddleware(t *testing.T) {
 
 			assert.Equal(t, tc.expectedStatus, rec.Code)
 			assert.Equal(t, tc.expectNextCalled, nextCalled)
+
+			// Проверка тела ответа (кроме валидного запроса)
+			if tc.expectedBody != "" {
+				assert.Contains(t, rec.Body.String(), tc.expectedBody)
+			}
+
 			mockTokenSvc.AssertExpectations(t)
 		})
 	}

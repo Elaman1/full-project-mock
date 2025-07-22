@@ -34,6 +34,11 @@ func AuthMiddleware(tokenSvc usecase.TokenService) func(http.Handler) http.Handl
 				return
 			}
 
+			if mapClaims.Subject == "" {
+				http.Error(w, "invalid token: empty subject", http.StatusUnauthorized)
+				return
+			}
+
 			if mapClaims.ExpiresAt != nil && mapClaims.ExpiresAt.Time.Before(time.Now()) {
 				http.Error(w, "expired token", http.StatusUnauthorized)
 				return
