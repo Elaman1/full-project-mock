@@ -107,7 +107,9 @@ func TestAuthMiddleware(t *testing.T) {
 			}
 			rec := httptest.NewRecorder()
 
-			AuthMiddleware(mockTokenSvc)(nextHandler).ServeHTTP(rec, req)
+			middlewareFunc := AuthMiddleware(mockTokenSvc)
+			handler := middlewareFunc(nextHandler)
+			handler.ServeHTTP(rec, req)
 
 			assert.Equal(t, tc.expectedStatus, rec.Code)
 			assert.Equal(t, tc.expectNextCalled, nextCalled)

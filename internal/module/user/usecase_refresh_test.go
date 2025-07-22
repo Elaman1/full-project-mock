@@ -2,327 +2,177 @@ package user
 
 import (
 	"context"
-	"full-project-mock/internal/domain/cache"
 	"full-project-mock/internal/mocks"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"strconv"
+	"github.com/stretchr/testify/require"
 	"testing"
-	"time"
 )
 
-func TestRefresh_Success(t *testing.T) {
-	ctx := context.Background()
-	mockRepo := new(MockUserRepository)
-	tokenService := new(mocks.MockTokenService)
-	cacheSession := new(MockSessionCache)
-
-	regClaims := initRegisteredClaims()
-	refreshSession := initRefreshSession()
-	user, err := initUserWithPassword()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	tokenService.On("ParseToken", accessToken).Return(regClaims, nil)
-	mockRepo.On("GetById", ctx, int64(defaultUserId)).Return(user, nil)
-	cacheSession.On("GetRefreshTokenId", ctx, hashRefreshToken(plainToken)).Return(refreshTokenId, nil)
-	cacheSession.On("GetSession", ctx, refreshTokenId).Return(refreshSession, nil)
-	tokenService.On("GenerateAccessToken", user).Return(accessToken, nil)
-	tokenService.On("GenerateRefreshToken").Return(refreshTokenId, plainToken, nil)
-	cacheSession.On("SetRefreshTokenId", ctx, hashRefreshToken(plainToken), refreshTokenId, mock.Anything).Return(nil)
-	cacheSession.On("SaveSession", ctx, mock.AnythingOfType("*cache.RefreshSession"), mock.Anything).Return(nil)
-
-	uc := Usecase{
-		TokenService: tokenService,
-		Rep:          mockRepo,
-		SessionCache: cacheSession,
-	}
-
-	accToken, plnToken, err := uc.Refresh(ctx, accessToken, plainToken, clientIP, clientUserAgent)
-	assert.NoError(t, err)
-	assert.Equal(t, accToken, accessToken)
-	assert.Equal(t, plnToken, plainToken)
-
-	tokenService.AssertExpectations(t)
-	mockRepo.AssertExpectations(t)
-	cacheSession.AssertExpectations(t)
-}
-
-func TestRefresh_ParseTokenError(t *testing.T) {
-	ctx := context.Background()
-	tokenService := new(mocks.MockTokenService)
-	regClaims := initRegisteredClaims()
-
-	tokenService.On("ParseToken", accessToken).Return(regClaims, customErr)
-
-	uc := Usecase{
-		TokenService: tokenService,
-	}
-
-	accToken, plnToken, err := uc.Refresh(ctx, accessToken, plainToken, clientIP, clientUserAgent)
-	assert.EqualError(t, err, customErr.Error())
-	assert.Equal(t, accToken, "")
-	assert.Equal(t, plnToken, "")
-
-	tokenService.AssertExpectations(t)
-}
-
-func TestRefresh_GetById(t *testing.T) {
-	ctx := context.Background()
-	tokenService := new(mocks.MockTokenService)
-	mockRepo := new(MockUserRepository)
-
-	regClaims := initRegisteredClaims()
-	user, err := initUserWithPassword()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	tokenService.On("ParseToken", accessToken).Return(regClaims, nil)
-	mockRepo.On("GetById", ctx, int64(defaultUserId)).Return(user, customErr)
-
-	uc := Usecase{
-		TokenService: tokenService,
-		Rep:          mockRepo,
-	}
-
-	accToken, plnToken, err := uc.Refresh(ctx, accessToken, plainToken, clientIP, clientUserAgent)
-	assert.EqualError(t, err, customErr.Error())
-	assert.Equal(t, accToken, "")
-	assert.Equal(t, plnToken, "")
-
-	tokenService.AssertExpectations(t)
-	mockRepo.AssertExpectations(t)
-}
-
-func TestRefresh_GetRefreshTokenIdError(t *testing.T) {
-	ctx := context.Background()
-	tokenService := new(mocks.MockTokenService)
-	mockRepo := new(MockUserRepository)
-	cacheSession := new(MockSessionCache)
-
-	regClaims := initRegisteredClaims()
-	user, err := initUserWithPassword()
-	if err != nil {
-		t.Fatal(err)
-	}
-
+func TestRefresh(t *testing.T) {
 	hashed := hashRefreshToken(plainToken)
-	tokenService.On("ParseToken", accessToken).Return(regClaims, nil)
-	mockRepo.On("GetById", ctx, int64(defaultUserId)).Return(user, nil)
-	cacheSession.On("GetRefreshTokenId", ctx, hashed).Return(refreshTokenId, customErr)
-
-	uc := Usecase{
-		TokenService: tokenService,
-		Rep:          mockRepo,
-		SessionCache: cacheSession,
-	}
-
-	accToken, plnToken, err := uc.Refresh(ctx, accessToken, plainToken, clientIP, clientUserAgent)
-	assert.EqualError(t, err, customErr.Error())
-	assert.Equal(t, accToken, "")
-	assert.Equal(t, plnToken, "")
-
-	tokenService.AssertExpectations(t)
-	mockRepo.AssertExpectations(t)
-	cacheSession.AssertExpectations(t)
-}
-
-func TestRefresh_GetSessionError(t *testing.T) {
-	ctx := context.Background()
-	tokenService := new(mocks.MockTokenService)
-	mockRepo := new(MockUserRepository)
-	cacheSession := new(MockSessionCache)
-
-	regClaims := initRegisteredClaims()
-	user, err := initUserWithPassword()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	tokenService.On("ParseToken", accessToken).Return(regClaims, nil)
-	mockRepo.On("GetById", ctx, int64(defaultUserId)).Return(user, nil)
-	cacheSession.On("GetRefreshTokenId", ctx, hashRefreshToken(plainToken)).Return(refreshTokenId, nil)
-	cacheSession.On("GetSession", ctx, refreshTokenId).Return(nil, customErr)
-
-	uc := Usecase{
-		TokenService: tokenService,
-		Rep:          mockRepo,
-		SessionCache: cacheSession,
-	}
-
-	accToken, plnToken, err := uc.Refresh(ctx, accessToken, plainToken, clientIP, clientUserAgent)
-	assert.EqualError(t, err, customErr.Error())
-	assert.Equal(t, accToken, "")
-	assert.Equal(t, plnToken, "")
-
-	tokenService.AssertExpectations(t)
-	mockRepo.AssertExpectations(t)
-	cacheSession.AssertExpectations(t)
-}
-
-func TestRefresh_GenerateAccessTokenError(t *testing.T) {
-	ctx := context.Background()
-	mockRepo := new(MockUserRepository)
-	tokenService := new(mocks.MockTokenService)
-	cacheSession := new(MockSessionCache)
-
-	regClaims := initRegisteredClaims()
 	refreshSession := initRefreshSession()
-	user, err := initUserWithPassword()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	tokenService.On("ParseToken", accessToken).Return(regClaims, nil)
-	mockRepo.On("GetById", ctx, int64(defaultUserId)).Return(user, nil)
-	cacheSession.On("GetRefreshTokenId", ctx, hashRefreshToken(plainToken)).Return(refreshTokenId, nil)
-	cacheSession.On("GetSession", ctx, refreshTokenId).Return(refreshSession, nil)
-	tokenService.On("GenerateAccessToken", mock.AnythingOfType("*model.User")).Return(accessToken, customErr)
-
-	uc := Usecase{
-		TokenService: tokenService,
-		Rep:          mockRepo,
-		SessionCache: cacheSession,
-	}
-
-	accToken, plnToken, err := uc.Refresh(ctx, accessToken, plainToken, clientIP, clientUserAgent)
-	assert.EqualError(t, err, customErr.Error())
-	assert.Equal(t, accToken, "")
-	assert.Equal(t, plnToken, "")
-
-	tokenService.AssertExpectations(t)
-	mockRepo.AssertExpectations(t)
-	cacheSession.AssertExpectations(t)
-}
-
-func TestRefresh_GenerateRefreshTokenError(t *testing.T) {
-	ctx := context.Background()
-	mockRepo := new(MockUserRepository)
-	tokenService := new(mocks.MockTokenService)
-	cacheSession := new(MockSessionCache)
-
 	regClaims := initRegisteredClaims()
-	refreshSession := initRefreshSession()
 	user, err := initUserWithPassword()
-	if err != nil {
-		t.Fatal(err)
+	require.NoError(t, err)
+
+	type testCase struct {
+		name       string
+		setupMocks func(*MockUserRepository, *mocks.MockTokenService, *MockSessionCache)
+		wantToken  string
+		wantPlain  string
+		wantErr    error
 	}
 
-	tokenService.On("ParseToken", accessToken).Return(regClaims, nil)
-	mockRepo.On("GetById", ctx, int64(defaultUserId)).Return(user, nil)
-	cacheSession.On("GetRefreshTokenId", ctx, hashRefreshToken(plainToken)).Return(refreshTokenId, nil)
-	cacheSession.On("GetSession", ctx, refreshTokenId).Return(refreshSession, nil)
-	tokenService.On("GenerateAccessToken", mock.AnythingOfType("*model.User")).Return(accessToken, nil)
-	tokenService.On("GenerateRefreshToken").Return(refreshTokenId, plainToken, customErr)
-
-	uc := Usecase{
-		TokenService: tokenService,
-		Rep:          mockRepo,
-		SessionCache: cacheSession,
+	cases := []testCase{
+		{
+			name: "success",
+			setupMocks: func(repo *MockUserRepository, ts *mocks.MockTokenService, cs *MockSessionCache) {
+				ts.On("ParseToken", accessToken).Return(regClaims, nil)
+				repo.On("GetById", mock.Anything, int64(defaultUserId)).Return(user, nil)
+				cs.On("GetRefreshTokenId", mock.Anything, hashed).Return(refreshTokenId, nil)
+				cs.On("GetSession", mock.Anything, refreshTokenId).Return(refreshSession, nil)
+				ts.On("GenerateAccessToken", user).Return(accessToken, nil)
+				ts.On("GenerateRefreshToken").Return(refreshTokenId, plainToken, nil)
+				cs.On("SetRefreshTokenId", mock.Anything, hashed, refreshTokenId, mock.Anything).Return(nil)
+				cs.On("SaveSession", mock.Anything, mock.AnythingOfType("*cache.RefreshSession"), mock.Anything).Return(nil)
+			},
+			wantToken: accessToken,
+			wantPlain: plainToken,
+			wantErr:   nil,
+		},
+		{
+			name: "parse token returns error",
+			setupMocks: func(_ *MockUserRepository, ts *mocks.MockTokenService, _ *MockSessionCache) {
+				ts.On("ParseToken", accessToken).Return(regClaims, customErr)
+			},
+			wantToken: "",
+			wantPlain: "",
+			wantErr:   customErr,
+		},
+		{
+			name: "get user by id error",
+			setupMocks: func(repo *MockUserRepository, ts *mocks.MockTokenService, _ *MockSessionCache) {
+				ts.On("ParseToken", accessToken).Return(regClaims, nil)
+				repo.On("GetById", mock.Anything, int64(defaultUserId)).Return(user, customErr)
+			},
+			wantToken: "",
+			wantPlain: "",
+			wantErr:   customErr,
+		},
+		{
+			name: "get refresh token id error",
+			setupMocks: func(repo *MockUserRepository, ts *mocks.MockTokenService, cs *MockSessionCache) {
+				ts.On("ParseToken", accessToken).Return(regClaims, nil)
+				repo.On("GetById", mock.Anything, int64(defaultUserId)).Return(user, nil)
+				cs.On("GetRefreshTokenId", mock.Anything, hashed).Return("", customErr)
+			},
+			wantToken: "",
+			wantPlain: "",
+			wantErr:   customErr,
+		},
+		{
+			name: "get session error",
+			setupMocks: func(repo *MockUserRepository, ts *mocks.MockTokenService, cs *MockSessionCache) {
+				ts.On("ParseToken", accessToken).Return(regClaims, nil)
+				repo.On("GetById", mock.Anything, int64(defaultUserId)).Return(user, nil)
+				cs.On("GetRefreshTokenId", mock.Anything, hashed).Return(refreshTokenId, nil)
+				cs.On("GetSession", mock.Anything, refreshTokenId).Return(nil, customErr)
+			},
+			wantToken: "",
+			wantPlain: "",
+			wantErr:   customErr,
+		},
+		{
+			name: "generate access token error",
+			setupMocks: func(repo *MockUserRepository, ts *mocks.MockTokenService, cs *MockSessionCache) {
+				ts.On("ParseToken", accessToken).Return(regClaims, nil)
+				repo.On("GetById", mock.Anything, int64(defaultUserId)).Return(user, nil)
+				cs.On("GetRefreshTokenId", mock.Anything, hashed).Return(refreshTokenId, nil)
+				cs.On("GetSession", mock.Anything, refreshTokenId).Return(refreshSession, nil)
+				ts.On("GenerateAccessToken", mock.AnythingOfType("*model.User")).Return("", customErr)
+			},
+			wantToken: "",
+			wantPlain: "",
+			wantErr:   customErr,
+		},
+		{
+			name: "generate refresh token error",
+			setupMocks: func(repo *MockUserRepository, ts *mocks.MockTokenService, cs *MockSessionCache) {
+				ts.On("ParseToken", accessToken).Return(regClaims, nil)
+				repo.On("GetById", mock.Anything, int64(defaultUserId)).Return(user, nil)
+				cs.On("GetRefreshTokenId", mock.Anything, hashed).Return(refreshTokenId, nil)
+				cs.On("GetSession", mock.Anything, refreshTokenId).Return(refreshSession, nil)
+				ts.On("GenerateAccessToken", mock.AnythingOfType("*model.User")).Return(accessToken, nil)
+				ts.On("GenerateRefreshToken").Return("", "", customErr)
+			},
+			wantToken: "",
+			wantPlain: "",
+			wantErr:   customErr,
+		},
+		{
+			name: "set refresh token id error",
+			setupMocks: func(repo *MockUserRepository, ts *mocks.MockTokenService, cs *MockSessionCache) {
+				ts.On("ParseToken", accessToken).Return(regClaims, nil)
+				repo.On("GetById", mock.Anything, int64(defaultUserId)).Return(user, nil)
+				cs.On("GetRefreshTokenId", mock.Anything, hashed).Return(refreshTokenId, nil)
+				cs.On("GetSession", mock.Anything, refreshTokenId).Return(refreshSession, nil)
+				ts.On("GenerateAccessToken", mock.AnythingOfType("*model.User")).Return(accessToken, nil)
+				ts.On("GenerateRefreshToken").Return(refreshTokenId, plainToken, nil)
+				cs.On("SetRefreshTokenId", mock.Anything, hashed, refreshTokenId, mock.Anything).Return(customErr)
+			},
+			wantToken: "",
+			wantPlain: "",
+			wantErr:   customErr,
+		},
+		{
+			name: "save session error",
+			setupMocks: func(repo *MockUserRepository, ts *mocks.MockTokenService, cs *MockSessionCache) {
+				ts.On("ParseToken", accessToken).Return(regClaims, nil)
+				repo.On("GetById", mock.Anything, int64(defaultUserId)).Return(user, nil)
+				cs.On("GetRefreshTokenId", mock.Anything, hashed).Return(refreshTokenId, nil)
+				cs.On("GetSession", mock.Anything, refreshTokenId).Return(refreshSession, nil)
+				ts.On("GenerateAccessToken", mock.AnythingOfType("*model.User")).Return(accessToken, nil)
+				ts.On("GenerateRefreshToken").Return(refreshTokenId, plainToken, nil)
+				cs.On("SetRefreshTokenId", mock.Anything, hashed, refreshTokenId, mock.Anything).Return(nil)
+				cs.On("SaveSession", mock.Anything, mock.AnythingOfType("*cache.RefreshSession"), mock.Anything).Return(customErr)
+			},
+			wantToken: "",
+			wantPlain: "",
+			wantErr:   customErr,
+		},
 	}
 
-	accToken, plnToken, err := uc.Refresh(ctx, accessToken, plainToken, clientIP, clientUserAgent)
-	assert.EqualError(t, err, customErr.Error())
-	assert.Equal(t, accToken, "")
-	assert.Equal(t, plnToken, "")
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-	tokenService.AssertExpectations(t)
-	mockRepo.AssertExpectations(t)
-	cacheSession.AssertExpectations(t)
-}
+			repo := new(MockUserRepository)
+			ts := new(mocks.MockTokenService)
+			cs := new(MockSessionCache)
 
-func TestRefresh_SetRefreshTokenIdError(t *testing.T) {
-	ctx := context.Background()
-	mockRepo := new(MockUserRepository)
-	tokenService := new(mocks.MockTokenService)
-	cacheSession := new(MockSessionCache)
+			tc.setupMocks(repo, ts, cs)
 
-	regClaims := initRegisteredClaims()
-	refreshSession := initRefreshSession()
-	user, err := initUserWithPassword()
-	if err != nil {
-		t.Fatal(err)
-	}
+			uc := Usecase{
+				Rep:          repo,
+				TokenService: ts,
+				SessionCache: cs,
+			}
 
-	tokenService.On("ParseToken", accessToken).Return(regClaims, nil)
-	mockRepo.On("GetById", ctx, int64(defaultUserId)).Return(user, nil)
-	cacheSession.On("GetRefreshTokenId", ctx, hashRefreshToken(plainToken)).Return(refreshTokenId, nil)
-	cacheSession.On("GetSession", ctx, refreshTokenId).Return(refreshSession, nil)
-	tokenService.On("GenerateAccessToken", mock.AnythingOfType("*model.User")).Return(accessToken, nil)
-	tokenService.On("GenerateRefreshToken").Return(refreshTokenId, plainToken, nil)
-	cacheSession.On("SetRefreshTokenId", ctx, hashRefreshToken(plainToken), refreshTokenId, mock.Anything).Return(customErr)
+			gotToken, gotPlain, err := uc.Refresh(context.Background(), accessToken, plainToken, clientIP, clientUserAgent)
 
-	uc := Usecase{
-		TokenService: tokenService,
-		Rep:          mockRepo,
-		SessionCache: cacheSession,
-	}
+			assert.Equal(t, tc.wantToken, gotToken)
+			assert.Equal(t, tc.wantPlain, gotPlain)
 
-	accToken, plnToken, err := uc.Refresh(ctx, accessToken, plainToken, clientIP, clientUserAgent)
-	assert.EqualError(t, err, customErr.Error())
-	assert.Equal(t, accToken, "")
-	assert.Equal(t, plnToken, "")
+			if tc.wantErr != nil {
+				assert.EqualError(t, err, tc.wantErr.Error())
+			} else {
+				assert.NoError(t, err)
+			}
 
-	tokenService.AssertExpectations(t)
-	mockRepo.AssertExpectations(t)
-	cacheSession.AssertExpectations(t)
-}
-
-func TestRefresh_SaveSessionError(t *testing.T) {
-	ctx := context.Background()
-	mockRepo := new(MockUserRepository)
-	tokenService := new(mocks.MockTokenService)
-	cacheSession := new(MockSessionCache)
-
-	regClaims := initRegisteredClaims()
-	refreshSession := initRefreshSession()
-	user, err := initUserWithPassword()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	hashed := hashRefreshToken(plainToken)
-	tokenService.On("ParseToken", accessToken).Return(regClaims, nil)
-	mockRepo.On("GetById", ctx, int64(defaultUserId)).Return(user, nil)
-	cacheSession.On("GetRefreshTokenId", ctx, hashed).Return(refreshTokenId, nil)
-	cacheSession.On("GetSession", ctx, refreshTokenId).Return(refreshSession, nil)
-	tokenService.On("GenerateAccessToken", mock.AnythingOfType("*model.User")).Return(accessToken, nil)
-	tokenService.On("GenerateRefreshToken").Return(refreshTokenId, plainToken, nil)
-	cacheSession.On("SetRefreshTokenId", ctx, hashed, refreshTokenId, mock.Anything).Return(nil)
-	cacheSession.On("SaveSession", ctx, mock.AnythingOfType("*cache.RefreshSession"), mock.Anything).Return(customErr)
-
-	uc := Usecase{
-		TokenService: tokenService,
-		Rep:          mockRepo,
-		SessionCache: cacheSession,
-	}
-
-	accToken, plnToken, err := uc.Refresh(ctx, accessToken, plainToken, clientIP, clientUserAgent)
-	assert.EqualError(t, err, customErr.Error())
-	assert.Equal(t, accToken, "")
-	assert.Equal(t, plnToken, "")
-
-	tokenService.AssertExpectations(t)
-	mockRepo.AssertExpectations(t)
-	cacheSession.AssertExpectations(t)
-}
-
-func initRegisteredClaims() jwt.RegisteredClaims {
-	return jwt.RegisteredClaims{
-		Subject: strconv.Itoa(defaultUserId),
-	}
-}
-
-func initRefreshSession() *cache.RefreshSession {
-	return &cache.RefreshSession{
-		UserID:    int64(defaultUserId),
-		ExpiresAt: time.Now().Add(time.Minute * 10),
-		TokenID:   refreshTokenId,
-		TokenHash: hashRefreshToken(plainToken),
-		UserAgent: clientUserAgent,
-		IP:        clientIP,
+			repo.AssertExpectations(t)
+			ts.AssertExpectations(t)
+			cs.AssertExpectations(t)
+		})
 	}
 }

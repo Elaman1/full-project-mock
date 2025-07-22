@@ -5,7 +5,9 @@
       <w>domcache</w>
       <w>execer</w>
       <w>initdb</w>
+      <w>securepassword</w>
       <w>testdb</w>
+      <w>testuser</w>
       <w>usecase</w>
     </words>
   </dictionary>

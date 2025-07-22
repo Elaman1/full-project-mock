@@ -3,97 +3,101 @@ package user
 import (
 	"context"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"testing"
 )
 
-func TestLogout_Success(t *testing.T) {
-	ctx := context.Background()
-	cacheSession := new(MockSessionCache)
+func TestLogout(t *testing.T) {
+	hashed := hashRefreshToken(plainToken)
 	refreshSession := initRefreshSession()
 
-	cacheSession.On("GetRefreshTokenId", ctx, hashRefreshToken(plainToken)).Return(refreshTokenId, nil)
-	cacheSession.On("GetSession", ctx, refreshTokenId).Return(refreshSession, nil)
-	cacheSession.On("DeleteSession", ctx, refreshSession.UserID, refreshTokenId).Return(nil)
-	cacheSession.On("DeleteRefreshTokenId", ctx, refreshSession.TokenHash).Return(nil)
-
-	uc := Usecase{
-		SessionCache: cacheSession,
+	type testCase struct {
+		name       string
+		setupMocks func(cs *MockSessionCache)
+		wantErr    error
 	}
 
-	err := uc.Logout(ctx, plainToken, clientIP, clientUserAgent)
-	assert.NoError(t, err)
-
-	cacheSession.AssertExpectations(t)
-}
-
-func TestLogout_GetRefreshTokenIdError(t *testing.T) {
-	ctx := context.Background()
-	cacheSession := new(MockSessionCache)
-
-	cacheSession.On("GetRefreshTokenId", ctx, hashRefreshToken(plainToken)).Return("", customErr)
-
-	uc := Usecase{
-		SessionCache: cacheSession,
+	cases := []testCase{
+		{
+			name: "success",
+			setupMocks: func(cs *MockSessionCache) {
+				cs.On("GetRefreshTokenId", mock.Anything, hashed).
+					Return(refreshTokenId, nil)
+				cs.On("GetSession", mock.Anything, refreshTokenId).
+					Return(refreshSession, nil)
+				cs.On("DeleteSession", mock.Anything, refreshSession.UserID, refreshTokenId).
+					Return(nil)
+				cs.On("DeleteRefreshTokenId", mock.Anything, refreshSession.TokenHash).
+					Return(nil)
+			},
+			wantErr: nil,
+		},
+		{
+			name: "get refresh token id returns error",
+			setupMocks: func(cs *MockSessionCache) {
+				cs.On("GetRefreshTokenId", mock.Anything, hashed).
+					Return("", customErr)
+			},
+			wantErr: customErr,
+		},
+		{
+			name: "get session returns error",
+			setupMocks: func(cs *MockSessionCache) {
+				cs.On("GetRefreshTokenId", mock.Anything, hashed).
+					Return(refreshTokenId, nil)
+				cs.On("GetSession", mock.Anything, refreshTokenId).
+					Return(nil, customErr)
+			},
+			wantErr: customErr,
+		},
+		{
+			name: "delete session returns error",
+			setupMocks: func(cs *MockSessionCache) {
+				cs.On("GetRefreshTokenId", mock.Anything, hashed).
+					Return(refreshTokenId, nil)
+				cs.On("GetSession", mock.Anything, refreshTokenId).
+					Return(refreshSession, nil)
+				cs.On("DeleteSession", mock.Anything, refreshSession.UserID, refreshTokenId).
+					Return(customErr)
+			},
+			wantErr: customErr,
+		},
+		{
+			name: "delete refresh token id returns error",
+			setupMocks: func(cs *MockSessionCache) {
+				cs.On("GetRefreshTokenId", mock.Anything, hashed).
+					Return(refreshTokenId, nil)
+				cs.On("GetSession", mock.Anything, refreshTokenId).
+					Return(refreshSession, nil)
+				cs.On("DeleteSession", mock.Anything, refreshSession.UserID, refreshTokenId).
+					Return(nil)
+				cs.On("DeleteRefreshTokenId", mock.Anything, refreshSession.TokenHash).
+					Return(customErr)
+			},
+			wantErr: customErr,
+		},
 	}
 
-	err := uc.Logout(ctx, plainToken, clientIP, clientUserAgent)
-	assert.EqualError(t, err, customErr.Error())
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 
-	cacheSession.AssertExpectations(t)
-}
+			cacheSession := new(MockSessionCache)
+			tc.setupMocks(cacheSession)
 
-func TestLogout_GetSessionError(t *testing.T) {
-	ctx := context.Background()
-	cacheSession := new(MockSessionCache)
+			uc := Usecase{
+				SessionCache: cacheSession,
+			}
 
-	cacheSession.On("GetRefreshTokenId", ctx, hashRefreshToken(plainToken)).Return(refreshTokenId, nil)
-	cacheSession.On("GetSession", ctx, refreshTokenId).Return(nil, customErr)
+			err := uc.Logout(context.Background(), plainToken, clientIP, clientUserAgent)
 
-	uc := Usecase{
-		SessionCache: cacheSession,
+			if tc.wantErr != nil {
+				assert.EqualError(t, err, tc.wantErr.Error())
+			} else {
+				assert.NoError(t, err)
+			}
+
+			cacheSession.AssertExpectations(t)
+		})
 	}
-
-	err := uc.Logout(ctx, plainToken, clientIP, clientUserAgent)
-	assert.EqualError(t, err, customErr.Error())
-
-	cacheSession.AssertExpectations(t)
-}
-
-func TestLogout_SetRefreshTokenIdError(t *testing.T) {
-	ctx := context.Background()
-	cacheSession := new(MockSessionCache)
-	refreshSession := initRefreshSession()
-
-	cacheSession.On("GetRefreshTokenId", ctx, hashRefreshToken(plainToken)).Return(refreshTokenId, nil)
-	cacheSession.On("GetSession", ctx, refreshTokenId).Return(refreshSession, nil)
-	cacheSession.On("DeleteSession", ctx, refreshSession.UserID, refreshTokenId).Return(customErr)
-
-	uc := Usecase{
-		SessionCache: cacheSession,
-	}
-
-	err := uc.Logout(ctx, plainToken, clientIP, clientUserAgent)
-	assert.EqualError(t, err, customErr.Error())
-
-	cacheSession.AssertExpectations(t)
-}
-
-func TestLogout_DeleteRefreshTokenIdError(t *testing.T) {
-	ctx := context.Background()
-	cacheSession := new(MockSessionCache)
-	refreshSession := initRefreshSession()
-
-	cacheSession.On("GetRefreshTokenId", ctx, hashRefreshToken(plainToken)).Return(refreshTokenId, nil)
-	cacheSession.On("GetSession", ctx, refreshTokenId).Return(refreshSession, nil)
-	cacheSession.On("DeleteSession", ctx, refreshSession.UserID, refreshTokenId).Return(nil)
-	cacheSession.On("DeleteRefreshTokenId", ctx, refreshSession.TokenHash).Return(customErr)
-
-	uc := Usecase{
-		SessionCache: cacheSession,
-	}
-
-	err := uc.Logout(ctx, plainToken, clientIP, clientUserAgent)
-	assert.EqualError(t, err, customErr.Error())
-
-	cacheSession.AssertExpectations(t)
 }
