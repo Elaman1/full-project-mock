@@ -62,7 +62,7 @@ func TestLogMiddleware(t *testing.T) {
 			output := logBuf.String()
 			if tc.expectLog {
 				assert.Contains(t, output, "request completed")
-				assert.Contains(t, output, "path=test-path")
+				assert.Contains(t, output, "path=/test-path")
 				assert.Contains(t, output, "method=GET")
 			} else {
 				assert.NotContains(t, output, "request completed")

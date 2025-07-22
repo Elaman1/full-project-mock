@@ -24,7 +24,7 @@ var (
 )
 
 func TestMain(m *testing.M) {
-	db, err := initDB("config/config.test.yaml")
+	db, err := initDB("../../../config/config.test.yaml")
 	if err != nil {
 		panic(err)
 	}

@@ -10,11 +10,15 @@ import (
 
 type contextKey string
 
-const userIDKey = contextKey("userID")
+const UserIDKey = contextKey("userID")
 
 func GetUserIDFromContext(ctx context.Context) (string, bool) {
-	id, ok := ctx.Value(userIDKey).(string)
+	id, ok := ctx.Value(UserIDKey).(string)
 	return id, ok
+}
+
+func SetUserIDToContext(ctx context.Context, userID string) context.Context {
+	return context.WithValue(ctx, UserIDKey, userID)
 }
 
 func AuthMiddleware(tokenSvc usecase.TokenService) func(http.Handler) http.Handler {
@@ -44,7 +48,7 @@ func AuthMiddleware(tokenSvc usecase.TokenService) func(http.Handler) http.Handl
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), userIDKey, mapClaims.Subject)
+			ctx := SetUserIDToContext(r.Context(), mapClaims.Subject)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
