@@ -1,9 +1,11 @@
 package config
 
 import (
+	"github.com/caarlos0/env/v10"
 	"os"
 	"time"
 
+	"github.com/joho/godotenv"
 	"gopkg.in/yaml.v3"
 )
 
@@ -12,7 +14,7 @@ type Config struct {
 	PostgresDB PostgresDB `yaml:"postgres"`
 	Logger     Logger     `yaml:"logger"`
 	Redis      Redis      `yaml:"redis"`
-	JWT        JWT        `yaml:"jwt"`
+	JWT        JWTConfig  `yaml:"jwt"`
 }
 
 type Logger struct {
@@ -45,19 +47,35 @@ type Server struct {
 	WriteTimeout time.Duration `yaml:"write_timeout"`
 }
 
-type JWT struct {
-	Secret string `yaml:"secret"`
+type JWTConfig struct {
+	PrivateKeyPath string `env:"JWT_PRIVATE_KEY_PATH,required"`
+	PublicKeyPath  string `env:"JWT_PUBLIC_KEY_PATH,required"`
+	AccessTTL      string `yaml:"access_ttl"`
 }
 
-func LoadConfig(path string) (*Config, error) {
+func LoadConfig(path, envPath string) (*Config, error) {
 	confFile, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
-	var conf Config
-	if err = yaml.Unmarshal(confFile, &conf); err != nil {
+	var cfg Config
+	if err = yaml.Unmarshal(confFile, &cfg); err != nil {
 		return nil, err
 	}
-	return &conf, nil
+
+	if err = godotenv.Load(envPath); err != nil {
+		return nil, err
+	}
+
+	// Переопределим значениями из ENV, если они заданы
+	if err = env.Parse(&cfg.JWT); err != nil {
+		return nil, err
+	}
+
+	if err = validateCfg(&cfg); err != nil {
+		return nil, err
+	}
+
+	return &cfg, nil
 }

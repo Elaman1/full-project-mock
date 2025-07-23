@@ -11,10 +11,17 @@ import (
 )
 
 type Repository struct {
-	DB *sql.DB
+	DB DBExecutor
 }
 
-func NewUserRepository(db *sql.DB) repository.UserRepository {
+// DBExecutor Чтобы можно было или sql.DB || sql.Tx передавать
+type DBExecutor interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
+	QueryRowContext(ctx context.Context, query string, args ...any) *sql.Row
+}
+
+func NewUserRepository(db DBExecutor) repository.UserRepository {
 	return &Repository{
 		DB: db,
 	}
@@ -66,4 +73,22 @@ func (u *Repository) Exists(ctx context.Context, email string) (bool, error) {
 	}
 
 	return true, err
+}
+
+func (u *Repository) GetById(ctx context.Context, id int64) (*model.User, error) {
+	ctxTimeout, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	user := &model.User{}
+	err := u.DB.QueryRowContext(ctxTimeout, "SELECT id, email, name, password, created_at, role_id FROM users WHERE id = $1", id).
+		Scan(&user.ID, &user.Email, &user.Username, &user.Password, &user.CreatedAt, &user.RoleID)
+
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("user not found")
+		}
+
+		return nil, fmt.Errorf("query error: %w", err)
+	}
+
+	return user, nil
 }

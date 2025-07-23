@@ -5,15 +5,20 @@ import (
 	"full-project-mock/internal/domain/usecase"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type contextKey string
 
-const userIDKey = contextKey("userID")
+const UserIDKey = contextKey("userID")
 
 func GetUserIDFromContext(ctx context.Context) (string, bool) {
-	id, ok := ctx.Value(userIDKey).(string)
+	id, ok := ctx.Value(UserIDKey).(string)
 	return id, ok
+}
+
+func SetUserIDToContext(ctx context.Context, userID string) context.Context {
+	return context.WithValue(ctx, UserIDKey, userID)
 }
 
 func AuthMiddleware(tokenSvc usecase.TokenService) func(http.Handler) http.Handler {
@@ -27,13 +32,23 @@ func AuthMiddleware(tokenSvc usecase.TokenService) func(http.Handler) http.Handl
 
 			tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 
-			userID, err := tokenSvc.ParseToken(tokenStr)
+			mapClaims, err := tokenSvc.ParseToken(tokenStr)
 			if err != nil {
-				http.Error(w, "invalid or expired token", http.StatusUnauthorized)
+				http.Error(w, "invalid token", http.StatusUnauthorized)
 				return
 			}
 
-			ctx := context.WithValue(r.Context(), userIDKey, userID)
+			if mapClaims.Subject == "" {
+				http.Error(w, "invalid token: empty subject", http.StatusUnauthorized)
+				return
+			}
+
+			if mapClaims.ExpiresAt != nil && mapClaims.ExpiresAt.Time.Before(time.Now()) {
+				http.Error(w, "expired token", http.StatusUnauthorized)
+				return
+			}
+
+			ctx := SetUserIDToContext(r.Context(), mapClaims.Subject)
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

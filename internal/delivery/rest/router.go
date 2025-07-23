@@ -17,12 +17,15 @@ func InitRouter(ctx context.Context, routeApp *RouteApp, allModules *module.Modu
 
 	r.Post("/register", allModules.UserHandler.RegisterHandler)
 	r.Post("/login", allModules.UserHandler.LoginHandler)
+	r.Post("/refresh", allModules.UserHandler.RefreshHandler)
 
 	// auth group
 	r.Route("/auth", func(r chi.Router) {
 		r.Use(middleware.AuthMiddleware(routeApp.TokenService))
 
 		r.Get("/me", allModules.UserHandler.MeHandler)
+		r.Post("/logout", allModules.UserHandler.LogoutHandler)
+		r.Post("/logout-all", allModules.UserHandler.LogoutAllHandler)
 	})
 
 	return r

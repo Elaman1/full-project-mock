@@ -2,66 +2,78 @@ package service
 
 import (
 	"crypto/rand"
+	"crypto/rsa"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"full-project-mock/internal/domain/model"
 	"full-project-mock/internal/domain/usecase"
 	"github.com/golang-jwt/jwt/v5"
 	"strconv"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type TokenService struct {
-	secret    []byte
-	accessTTL time.Duration
+	privateKey *rsa.PrivateKey
+	publicKey  *rsa.PublicKey
+	accessTTL  time.Duration
 }
 
-func NewTokenService(secret string, ttl time.Duration) usecase.TokenService {
+func NewTokenService(publicKey *rsa.PublicKey, privateKey *rsa.PrivateKey, ttl time.Duration) usecase.TokenService {
 	return &TokenService{
-		secret:    []byte(secret),
-		accessTTL: ttl,
+		privateKey: privateKey,
+		publicKey:  publicKey,
+		accessTTL:  ttl,
 	}
 }
 
-// GenerateAccessToken 1. Генерация access token (JWT)
 func (s *TokenService) GenerateAccessToken(user *model.User) (string, error) {
-	claims := jwt.MapClaims{
-		"sub": strconv.Itoa(int(user.ID)),
-		"exp": time.Now().Add(s.accessTTL).Unix(),
+	if user == nil {
+		return "", errors.New("user is nil")
 	}
 
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(s.secret)
-}
-
-// GenerateRefreshToken 2. Генерация refresh token (обычная строка)
-func (s *TokenService) GenerateRefreshToken() (string, error) {
-	buf := make([]byte, 32)
-	if _, err := rand.Read(buf); err != nil {
-		return "", err
+	claims := jwt.RegisteredClaims{
+		Subject:   strconv.Itoa(int(user.ID)),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.accessTTL)),
 	}
-	return base64.RawURLEncoding.EncodeToString(buf), nil
+
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
+	return token.SignedString(s.privateKey)
 }
 
-// ParseToken 3. Разбор access token — достать userID (sub)
-func (s *TokenService) ParseToken(tokenStr string) (string, error) {
-	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (any, error) {
-		if t.Method != jwt.SigningMethodHS256 {
-			return nil, errors.New("unexpected signing method")
+func (s *TokenService) GenerateRefreshToken() (tokenID, plainToken string, err error) {
+	tokenID = uuid.NewString()
+	plainTokenBytes := make([]byte, 32)
+	if _, err = rand.Read(plainTokenBytes); err != nil {
+		return
+	}
+
+	plainToken = base64.RawStdEncoding.EncodeToString(plainTokenBytes)
+	return
+}
+
+func (s *TokenService) ParseToken(tokenStr string) (jwt.RegisteredClaims, error) {
+	claims := &jwt.RegisteredClaims{}
+	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
-		return s.secret, nil
+		return s.publicKey, nil
 	})
+
 	if err != nil {
-		return "", err
+		return jwt.RegisteredClaims{}, fmt.Errorf("failed to parse token: %w", err)
 	}
 
-	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		sub, ok := claims["sub"].(string)
-		if !ok {
-			return "", errors.New("invalid sub")
-		}
-		return sub, nil
+	if !token.Valid {
+		return jwt.RegisteredClaims{}, fmt.Errorf("token is invalid")
 	}
 
-	return "", errors.New("invalid token")
+	if claims.ExpiresAt == nil {
+		return jwt.RegisteredClaims{}, errors.New("expired at missing")
+	}
+
+	return *claims, nil
 }

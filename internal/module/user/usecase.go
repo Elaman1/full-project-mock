@@ -56,39 +56,170 @@ func (u *Usecase) Register(ctx context.Context, email, username, password string
 		return 0, fmt.Errorf("произошла ошибка при регистрации")
 	}
 
-	// пока что поставим 0, если потом надо будет вернем нормально
+	// пока что поставим 0, если потом надо, будем возвращать нормально
 	return 0, nil
 }
 
-func (u *Usecase) Login(ctx context.Context, email, password string) (string, string, error) {
+func (u *Usecase) Login(ctx context.Context, email, password, clientIP, ua string) (string, string, error) {
 	user, err := u.Rep.Get(ctx, email)
 	if err != nil {
 		return "", "", err
 	}
 
-	ok, err := hasher.VerifyPassword(password, user.Password)
+	err = hasher.Verify(user.Password, password)
 	if err != nil {
 		return "", "", err
 	}
 
-	if !ok {
-		return "", "", fmt.Errorf("логин или пароль неправильный")
-	}
+	return u.generateAccessAndRefreshToken(ctx, clientIP, ua, user)
+}
 
+func (u *Usecase) generateAccessAndRefreshToken(ctx context.Context, clientIP, ua string, user *model.User) (string, string, error) {
 	accessToken, err := u.TokenService.GenerateAccessToken(user)
 	if err != nil {
 		return "", "", err
 	}
 
-	refreshToken, err := u.TokenService.GenerateRefreshToken()
+	refreshTokenId, plainToken, err := u.TokenService.GenerateRefreshToken()
 	if err != nil {
 		return "", "", err
 	}
 
-	err = u.SessionCache.StoreRefreshToken(ctx, strconv.Itoa(int(user.ID)), refreshToken, u.RefreshTtl)
+	hashedPlainToken := hashRefreshToken(plainToken)
+	newSess := &domcache.RefreshSession{
+		UserID:    user.ID,
+		TokenID:   refreshTokenId,
+		TokenHash: hashedPlainToken,
+		ExpiresAt: time.Now().Add(u.RefreshTtl),
+		IP:        clientIP,
+		UserAgent: ua,
+	}
+
+	err = u.SessionCache.SetRefreshTokenId(ctx, hashedPlainToken, refreshTokenId, u.RefreshTtl)
 	if err != nil {
 		return "", "", err
 	}
 
-	return accessToken, refreshToken, nil
+	err = u.SessionCache.SaveSession(ctx, newSess, u.RefreshTtl)
+	if err != nil {
+		return "", "", err
+	}
+
+	return accessToken, plainToken, nil
+}
+
+func (u *Usecase) Refresh(ctx context.Context, accessToken, refreshToken, clientIP, ua string) (string, string, error) {
+	mapClaims, err := u.TokenService.ParseToken(accessToken)
+	if err != nil {
+		return "", "", err
+	}
+
+	userId, err := strconv.Atoi(mapClaims.Subject)
+	if err != nil {
+		return "", "", err
+	}
+
+	user, err := u.Rep.GetById(ctx, int64(userId))
+	if err != nil {
+		return "", "", err
+	}
+
+	refreshTokenId, err := u.SessionCache.GetRefreshTokenId(ctx, hashRefreshToken(refreshToken))
+	if err != nil {
+		return "", "", err
+	}
+
+	refreshSession, err := u.SessionCache.GetSession(ctx, refreshTokenId)
+	if err != nil {
+		return "", "", err
+	}
+
+	if refreshSession.ExpiresAt.Before(time.Now()) {
+		return "", "", fmt.Errorf("время истек заново авторизуйтесь")
+	}
+
+	if refreshSession.IP != clientIP {
+		return "", "", fmt.Errorf("авторизуйтесь еще раз")
+	}
+
+	if refreshSession.UserAgent != ua {
+		return "", "", fmt.Errorf("авторизуйтесь еще раз")
+	}
+
+	if hashRefreshToken(refreshToken) != refreshSession.TokenHash {
+		return "", "", fmt.Errorf("авторизуйтесь еще раз")
+	}
+
+	return u.generateAccessAndRefreshToken(ctx, clientIP, ua, user)
+}
+
+func (u *Usecase) Logout(ctx context.Context, refreshToken, clientIP, ua string) error {
+	refreshTokenId, err := u.SessionCache.GetRefreshTokenId(ctx, hashRefreshToken(refreshToken))
+	if err != nil {
+		return err
+	}
+
+	refreshSession, err := u.SessionCache.GetSession(ctx, refreshTokenId)
+	if err != nil {
+		return err
+	}
+
+	if refreshSession.TokenHash != hashRefreshToken(refreshToken) {
+		return fmt.Errorf("невозможно выполнить операцию")
+	}
+
+	if refreshSession.IP != clientIP {
+		return fmt.Errorf("невозможно выполнить операцию")
+	}
+
+	if refreshSession.UserAgent != ua {
+		return fmt.Errorf("невозможно выполнить операцию")
+	}
+
+	err = u.SessionCache.DeleteSession(ctx, refreshSession.UserID, refreshTokenId)
+	if err != nil {
+		return err
+	}
+
+	err = u.SessionCache.DeleteRefreshTokenId(ctx, hashRefreshToken(refreshToken))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (u *Usecase) LogoutAllDevices(ctx context.Context, refreshToken, clientIP, ua string) error {
+	refreshTokenId, err := u.SessionCache.GetRefreshTokenId(ctx, hashRefreshToken(refreshToken))
+	if err != nil {
+		return err
+	}
+
+	refreshSession, err := u.SessionCache.GetSession(ctx, refreshTokenId)
+	if err != nil {
+		return err
+	}
+
+	if refreshSession.TokenHash != hashRefreshToken(refreshToken) {
+		return fmt.Errorf("невозможно выполнить операцию")
+	}
+
+	if refreshSession.IP != clientIP {
+		return fmt.Errorf("невозможно выполнить операцию")
+	}
+
+	if refreshSession.UserAgent != ua {
+		return fmt.Errorf("невозможно выполнить операцию")
+	}
+
+	err = u.SessionCache.DeleteAllUserSessions(ctx, refreshSession.UserID)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func hashRefreshToken(token string) string {
+	return hasher.Sha256Hex(token)
 }

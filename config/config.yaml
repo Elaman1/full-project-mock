@@ -3,7 +3,7 @@ server:
   read_timeout: 10s
   write_timeout: 10s
 postgres:
-  host: localhost
+  host: db
   port: 5432
   username: postgres
   password: Aa1234
@@ -16,10 +16,10 @@ logger:
   level: -4 # -4, 0, 4, 8
   format: json # json, text
 redis:
-  host: localhost
+  host: redis
   port: 6379
   password: ""
   db: 0
 jwt:
-  secret: "asdasdasd1123"
+  access_ttl: "15m"
 

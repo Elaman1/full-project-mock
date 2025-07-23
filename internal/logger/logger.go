@@ -4,23 +4,33 @@ import (
 	"full-project-mock/internal/config"
 	"log/slog"
 	"os"
+	"sync"
 )
 
-func InitLogger(config *config.Logger) (*slog.Logger, error) {
-	var loggerHandler slog.Handler
+var (
+	logInstance *slog.Logger
+	once        sync.Once
+)
 
-	switch config.Format {
-	case "json":
-		loggerHandler = slog.NewJSONHandler(os.Stdout,
-			&slog.HandlerOptions{
-				Level: slog.Level(config.Level),
-			})
-	case "text":
-		loggerHandler = slog.NewTextHandler(os.Stdout,
-			&slog.HandlerOptions{
-				Level: slog.Level(config.Level),
-			})
-	}
+func InitLogger(config *config.Logger) *slog.Logger {
+	// На всякий случаи, но лучше не вызывать этот метод кроме bootstrap
+	once.Do(func() {
+		var loggerHandler slog.Handler
 
-	return slog.New(loggerHandler), nil
+		switch config.Format {
+		case "json":
+			loggerHandler = slog.NewJSONHandler(os.Stdout,
+				&slog.HandlerOptions{
+					Level: slog.Level(config.Level),
+				})
+		case "text":
+			loggerHandler = slog.NewTextHandler(os.Stdout,
+				&slog.HandlerOptions{
+					Level: slog.Level(config.Level),
+				})
+		}
+		logInstance = slog.New(loggerHandler)
+	})
+
+	return logInstance
 }
