@@ -3,6 +3,7 @@ package user
 import (
 	"context"
 	"errors"
+	"fmt"
 	"full-project-mock/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -46,7 +47,7 @@ func TestRegisterHandler(t *testing.T) {
 		{
 			name: "Usecase returns error",
 			args: args{
-				body: `{"email":"test@mail.com","username":"user","password":"pass123"}`,
+				body: fmt.Sprintf(`{"email":"%s","username":"user","password":"pass123"}`, email),
 				mockSetup: func(m *MockUserUsecase) {
 					m.On("Register", mock.Anything, "test@mail.com", "user", "pass123").
 						Return(int64(0), errors.New("some error")).Once()
@@ -58,9 +59,9 @@ func TestRegisterHandler(t *testing.T) {
 		{
 			name: "Success",
 			args: args{
-				body: `{"email":"test@mail.com","username":"user","password":"pass123"}`,
+				body: fmt.Sprintf(`{"email":"%s","username":"user","password":"pass123"}`, email),
 				mockSetup: func(m *MockUserUsecase) {
-					m.On("Register", mock.Anything, "test@mail.com", "user", "pass123").
+					m.On("Register", mock.Anything, email, "user", "pass123").
 						Return(int64(123), nil).Once()
 				},
 				expectedCode: http.StatusCreated,

@@ -10,29 +10,31 @@ import (
 	"full-project-mock/internal/domain/model"
 	"full-project-mock/internal/domain/repository"
 	"full-project-mock/pkg/hasher"
+	"github.com/redis/go-redis/v9"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 	"os"
 	"testing"
+	"time"
 
 	_ "github.com/lib/pq"
 )
 
 var (
-	testDB *sql.DB
+	testDB    *sql.DB
+	testRedis *redis.Client
+	accessTTL time.Duration
 )
 
 func TestMain(m *testing.M) {
-	db, err := initDB("../../../config/config.test.yaml")
+	err := initConn("../../../config/config.test.yaml")
 	if err != nil {
 		panic(err)
 	}
 
-	testDB = db
-
 	code := m.Run()
-	err = db.Close()
+	err = testDB.Close()
 	if err != nil {
 		panic(err)
 	}
@@ -109,36 +111,57 @@ func createTestUser(t *testing.T, ctx context.Context, prefix int) (*model.User,
 	return user, repo, err
 }
 
-func initDB(path string) (*sql.DB, error) {
+func initConn(path string) error {
 	confFile, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	var cfg config.Config
 	if err = yaml.Unmarshal(confFile, &cfg); err != nil {
-		return nil, err
+		return err
 	}
 
-	if err = validatePostgresDB(&cfg); err != nil {
-		return nil, err
-	}
-
-	c := cfg.PostgresDB
-	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-		c.Host, c.Port, c.Username, c.Password, c.DBName, c.SslMode,
-	)
-
-	conn, err := sql.Open("postgres", dsn)
+	err = validateCfg(cfg)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	if err = conn.Ping(); err != nil {
-		return nil, err
+	conn, err := initTestDB(&cfg)
+	if err != nil {
+		return err
 	}
 
-	return conn, nil
+	r, err := initRedis(&cfg)
+	if err != nil {
+		return err
+	}
+
+	ttl, err := time.ParseDuration(cfg.JWT.AccessTTL)
+	if err != nil {
+		return err
+	}
+
+	accessTTL = ttl
+	testDB = conn
+	testRedis = r
+	return nil
+}
+
+func validateCfg(cfg config.Config) error {
+	if err := validatePostgresDB(&cfg); err != nil {
+		return err
+	}
+
+	if err := validateRedis(&cfg); err != nil {
+		return err
+	}
+
+	if err := validateJWTAccessTTL(&cfg); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func validatePostgresDB(cfg *config.Config) error {
@@ -161,10 +184,66 @@ func validatePostgresDB(cfg *config.Config) error {
 	return nil
 }
 
+func validateRedis(cfg *config.Config) error {
+	if cfg.Redis.Host == "" {
+		return errors.New("missing required test configuration variable: redis_host")
+	}
+
+	if cfg.Redis.Port == 0 {
+		return errors.New("missing required test configuration variable: redis_port")
+	}
+
+	return nil
+}
+
+func validateJWTAccessTTL(cfg *config.Config) error {
+	if cfg.JWT.AccessTTL == "" {
+		return errors.New("missing required test configuration variable: jwt_access_ttl")
+	}
+
+	return nil
+}
+
 func setupTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 	if testDB == nil {
 		t.Fatal("testDB is not initialized")
 	}
 	return testDB
+}
+
+func initTestDB(cfg *config.Config) (*sql.DB, error) {
+	c := cfg.PostgresDB
+	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
+		c.Host, c.Port, c.Username, c.Password, c.DBName, c.SslMode,
+	)
+
+	conn, err := sql.Open("postgres", dsn)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = conn.Ping(); err != nil {
+		return nil, err
+	}
+
+	return conn, nil
+}
+
+func initRedis(cfg *config.Config) (*redis.Client, error) {
+	r := redis.NewClient(&redis.Options{
+		Addr:     fmt.Sprintf("%s:%d", cfg.Redis.Host, cfg.Redis.Port),
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	status := r.Ping(ctx)
+	if err := status.Err(); err != nil {
+		return nil, err
+	}
+
+	return r, nil
 }

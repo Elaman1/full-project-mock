@@ -5,3 +5,10 @@ postgres:
   password: Aa1234
   dbname: testdb
   ssl_mode: disable
+redis:
+  host: localhost
+  port: 6380
+  password: ""
+  db: 1
+jwt:
+  access_ttl: "15m"

@@ -2,6 +2,7 @@ package user
 
 import (
 	"errors"
+	"fmt"
 	"full-project-mock/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -36,9 +37,9 @@ func TestRefreshHandler(t *testing.T) {
 		{
 			name: "Usecase returns error",
 			args: args{
-				body: `{"access_token":"access123","refresh_token":"refresh123"}`,
+				body: fmt.Sprintf(`{"access_token":%s","refresh_token":"%s"}`, accessStr, refreshStr),
 				mockSetup: func(m *MockUserUsecase) {
-					m.On("Refresh", mock.Anything, "access123", "refresh123", ipAddress, "test-agent").
+					m.On("Refresh", mock.Anything, accessStr, refreshStr, ipAddress, testAgent).
 						Return("", "", errors.New("invalid token")).Once()
 				},
 				expectedCode: http.StatusInternalServerError,
@@ -48,9 +49,9 @@ func TestRefreshHandler(t *testing.T) {
 		{
 			name: "Success",
 			args: args{
-				body: `{"access_token":"access123","refresh_token":"refresh123"}`,
+				body: fmt.Sprintf(`{"access_token":"%s","refresh_token":"%s"}`, accessStr, refreshStr),
 				mockSetup: func(m *MockUserUsecase) {
-					m.On("Refresh", mock.Anything, "access123", "refresh123", ipAddress, "test-agent").
+					m.On("Refresh", mock.Anything, accessStr, refreshStr, ipAddress, testAgent).
 						Return("new-access", "new-refresh", nil).Once()
 				},
 				expectedCode: http.StatusCreated,
@@ -67,7 +68,7 @@ func TestRefreshHandler(t *testing.T) {
 			handler := &UserHandler{Usecase: mockUsecase}
 
 			req := httptest.NewRequest(http.MethodPost, "/refresh", strings.NewReader(tt.args.body))
-			req.Header.Set("User-Agent", "test-agent")
+			req.Header.Set("User-Agent", testAgent)
 			req.RemoteAddr = ipAddress
 			req = req.WithContext(service.WithLogger(req.Context(), slog.Default()))
 

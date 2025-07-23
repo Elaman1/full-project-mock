@@ -16,6 +16,7 @@ import (
 
 var (
 	refreshStr = "refresh123"
+	accessStr  = "access123"
 )
 
 func TestLogoutAllHandler(t *testing.T) {

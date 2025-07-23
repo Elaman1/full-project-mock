@@ -33,6 +33,12 @@ services:
       timeout: 3s
       retries: 5
 
+  redis-test:
+    image: redis:7
+    container_name: my-test-redis
+    ports:
+      - "6380:6380"
+
   migrate:
     image: migrate/migrate
     depends_on:
