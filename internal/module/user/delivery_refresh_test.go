@@ -37,7 +37,7 @@ func TestRefreshHandler(t *testing.T) {
 		{
 			name: "Usecase returns error",
 			args: args{
-				body: fmt.Sprintf(`{"access_token":%s","refresh_token":"%s"}`, accessStr, refreshStr),
+				body: fmt.Sprintf(`{"access_token":"%s","refresh_token":"%s"}`, accessStr, refreshStr),
 				mockSetup: func(m *MockUserUsecase) {
 					m.On("Refresh", mock.Anything, accessStr, refreshStr, ipAddress, testAgent).
 						Return("", "", errors.New("invalid token")).Once()

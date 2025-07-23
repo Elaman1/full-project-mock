@@ -55,21 +55,25 @@ func (s *TokenService) GenerateRefreshToken() (tokenID, plainToken string, err e
 }
 
 func (s *TokenService) ParseToken(tokenStr string) (jwt.RegisteredClaims, error) {
-	claims := jwt.RegisteredClaims{}
-
+	claims := &jwt.RegisteredClaims{}
 	token, err := jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
 		}
 		return s.publicKey, nil
 	})
+
 	if err != nil {
-		return claims, err
+		return jwt.RegisteredClaims{}, fmt.Errorf("failed to parse token: %w", err)
 	}
 
 	if !token.Valid {
-		return claims, fmt.Errorf("signature invalid")
+		return jwt.RegisteredClaims{}, fmt.Errorf("token is invalid")
 	}
 
-	return claims, nil
+	if claims.ExpiresAt == nil {
+		return jwt.RegisteredClaims{}, errors.New("expired at missing")
+	}
+
+	return *claims, nil
 }

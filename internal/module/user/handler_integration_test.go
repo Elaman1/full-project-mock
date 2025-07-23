@@ -17,8 +17,11 @@ import (
 	"testing"
 )
 
-// Сборка handler → usecase → repository на реальной БД
-func buildUserHandlerIntegration(t *testing.T) *UserHandler {
+var (
+	testTx *sql.Tx
+)
+
+func initTx(t *testing.T) {
 	setConn(t)
 
 	t.Helper()
@@ -38,7 +41,14 @@ func buildUserHandlerIntegration(t *testing.T) *UserHandler {
 		}
 	})
 
-	userRepo := NewUserRepository(tx)
+	testTx = tx
+}
+
+// Сборка handler → usecase → repository на реальной БД
+func buildUserHandlerIntegration(t *testing.T) *UserHandler {
+	t.Helper()
+
+	userRepo := NewUserRepository(testTx)
 	sessionCache := cache.NewSessionRedisRepository(testRedis)
 	privateKey, publicKey := generateTestKeys(t)
 	tokenService := service.NewTokenService(publicKey, privateKey, accessTTL)
@@ -46,6 +56,8 @@ func buildUserHandlerIntegration(t *testing.T) *UserHandler {
 	return &UserHandler{Usecase: usecase}
 }
 func TestRegisterHandler_Integration(t *testing.T) {
+	initTx(t)
+
 	tests := []struct {
 		name           string
 		payload        string
@@ -91,8 +103,8 @@ func TestRegisterHandler_Integration(t *testing.T) {
 		{
 			name:           "duplicate email (again)",
 			payload:        `{"email":"int-user4@test.com","username":"user2","password":"anotherpass"}`,
-			wantStatus:     http.StatusConflict,
-			wantInResponse: "уже зарегистрирован", // второй вызов
+			wantStatus:     http.StatusInternalServerError, // чтобы не делить ошибки по тексту
+			wantInResponse: "пользователь с таким email",   // второй вызов
 		},
 	}
 

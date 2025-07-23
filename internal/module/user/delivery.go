@@ -33,6 +33,7 @@ func (u *UserHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	newUserId, err := u.Usecase.Register(r.Context(), registerUser.Email, registerUser.Username, registerUser.Password)
 	if err != nil {
+
 		msg := fmt.Sprintf("User registration error: %v", err)
 		respond.WithError(w, http.StatusInternalServerError, msg, lgr)
 		return
