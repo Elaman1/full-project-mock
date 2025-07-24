@@ -3,7 +3,7 @@ package service
 import (
 	"crypto/rand"
 	"crypto/rsa"
-	"full-project-mock/internal/domain/model"
+	"github.com/Elaman1/full-project-mock/internal/domain/model"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"

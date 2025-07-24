@@ -2,8 +2,8 @@ package user
 
 import (
 	"database/sql"
-	"full-project-mock/internal/cache"
-	"full-project-mock/internal/domain/usecase"
+	"github.com/Elaman1/full-project-mock/internal/cache"
+	"github.com/Elaman1/full-project-mock/internal/domain/usecase"
 	"github.com/redis/go-redis/v9"
 )
 

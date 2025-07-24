@@ -3,7 +3,7 @@ package database
 import (
 	"context"
 	"fmt"
-	"full-project-mock/internal/config"
+	"github.com/Elaman1/full-project-mock/internal/config"
 	"github.com/redis/go-redis/v9"
 	"time"
 )

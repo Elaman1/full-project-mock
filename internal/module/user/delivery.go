@@ -3,11 +3,11 @@ package user
 import (
 	"encoding/json"
 	"fmt"
-	"full-project-mock/internal/domain/usecase"
-	"full-project-mock/internal/middleware"
-	"full-project-mock/internal/service"
-	"full-project-mock/pkg/req"
-	"full-project-mock/pkg/respond"
+	"github.com/Elaman1/full-project-mock/internal/domain/usecase"
+	"github.com/Elaman1/full-project-mock/internal/middleware"
+	"github.com/Elaman1/full-project-mock/internal/service"
+	"github.com/Elaman1/full-project-mock/pkg/req"
+	"github.com/Elaman1/full-project-mock/pkg/respond"
 	"net/http"
 )
 

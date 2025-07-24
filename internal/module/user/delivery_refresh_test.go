@@ -3,7 +3,7 @@ package user
 import (
 	"errors"
 	"fmt"
-	"full-project-mock/internal/service"
+	"github.com/Elaman1/full-project-mock/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"io"

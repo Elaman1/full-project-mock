@@ -2,9 +2,9 @@ package rest
 
 import (
 	"context"
-	"full-project-mock/internal/domain/usecase"
-	"full-project-mock/internal/middleware"
-	"full-project-mock/internal/module"
+	"github.com/Elaman1/full-project-mock/internal/domain/usecase"
+	"github.com/Elaman1/full-project-mock/internal/middleware"
+	"github.com/Elaman1/full-project-mock/internal/module"
 	"github.com/go-chi/chi/v5"
 	"log/slog"
 )

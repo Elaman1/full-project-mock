@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"full-project-mock/internal/domain/cache"
+	"github.com/Elaman1/full-project-mock/internal/domain/cache"
 	"github.com/redis/go-redis/v9"
 	"strings"
 	"time"

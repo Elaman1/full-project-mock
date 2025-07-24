@@ -5,8 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"full-project-mock/internal/domain/model"
-	"full-project-mock/internal/domain/repository"
+	"github.com/Elaman1/full-project-mock/internal/domain/model"
+	"github.com/Elaman1/full-project-mock/internal/domain/repository"
 	"time"
 )
 

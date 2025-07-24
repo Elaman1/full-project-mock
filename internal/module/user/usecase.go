@@ -3,12 +3,12 @@ package user
 import (
 	"context"
 	"fmt"
-	domcache "full-project-mock/internal/domain/cache"
-	"full-project-mock/internal/domain/constants"
-	"full-project-mock/internal/domain/model"
-	"full-project-mock/internal/domain/repository"
-	"full-project-mock/internal/domain/usecase"
-	"full-project-mock/pkg/hasher"
+	domcache "github.com/Elaman1/full-project-mock/internal/domain/cache"
+	"github.com/Elaman1/full-project-mock/internal/domain/constants"
+	"github.com/Elaman1/full-project-mock/internal/domain/model"
+	"github.com/Elaman1/full-project-mock/internal/domain/repository"
+	"github.com/Elaman1/full-project-mock/internal/domain/usecase"
+	"github.com/Elaman1/full-project-mock/pkg/hasher"
 	"strconv"
 	"time"
 )

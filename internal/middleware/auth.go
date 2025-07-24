@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"context"
-	"full-project-mock/internal/domain/usecase"
+	"github.com/Elaman1/full-project-mock/internal/domain/usecase"
 	"net/http"
 	"strings"
 	"time"

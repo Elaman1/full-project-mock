@@ -2,7 +2,7 @@ package user
 
 import (
 	"context"
-	"full-project-mock/internal/middleware"
+	"github.com/Elaman1/full-project-mock/internal/middleware"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"net/http"

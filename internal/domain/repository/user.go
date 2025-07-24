@@ -2,7 +2,7 @@ package repository
 
 import (
 	"context"
-	"full-project-mock/internal/domain/model"
+	"github.com/Elaman1/full-project-mock/internal/domain/model"
 )
 
 type UserRepository interface {

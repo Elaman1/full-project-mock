@@ -1,7 +1,7 @@
 package middleware
 
 import (
-	"full-project-mock/internal/service"
+	"github.com/Elaman1/full-project-mock/internal/service"
 	"log/slog"
 	"net/http"
 	"time"
