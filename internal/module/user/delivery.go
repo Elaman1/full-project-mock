@@ -53,15 +53,22 @@ func (u *UserHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ip, userAgent := req.GetClientMeta(r)
-	accessToken, refreshToken, err := u.Usecase.Login(r.Context(), loginRequest.Email, loginRequest.Password, ip, userAgent)
+	err = loginRequest.Validate()
 	if err != nil {
-		msg := fmt.Sprintf("User login error: %v", err)
-		respond.WithError(w, http.StatusInternalServerError, msg, lgr)
+		msg := fmt.Sprintf("User validation error: %v", err)
+		respond.WithError(w, http.StatusBadRequest, msg, lgr)
 		return
 	}
 
-	respond.WithSuccessJSON(w, http.StatusCreated, map[string]string{
+	ip, userAgent := req.GetClientMeta(r)
+	accessToken, refreshToken, httpStatus, err := u.Usecase.Login(r.Context(), loginRequest.Email, loginRequest.Password, ip, userAgent)
+	if err != nil {
+		msg := fmt.Sprintf("User login error: %v", err)
+		respond.WithError(w, httpStatus, msg, lgr)
+		return
+	}
+
+	respond.WithSuccessJSON(w, httpStatus, map[string]string{
 		"access_token":  accessToken,
 		"refresh_token": refreshToken,
 	})
@@ -93,14 +100,14 @@ func (u *UserHandler) RefreshHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ip, userAgent := req.GetClientMeta(r)
-	accessToken, refreshToken, err := u.Usecase.Refresh(r.Context(), refreshRequest.AccessToken, refreshRequest.RefreshToken, ip, userAgent)
+	accessToken, refreshToken, httpStatus, err := u.Usecase.Refresh(r.Context(), refreshRequest.AccessToken, refreshRequest.RefreshToken, ip, userAgent)
 	if err != nil {
 		msg := fmt.Sprintf("Refresh error: %v", err)
-		respond.WithError(w, http.StatusInternalServerError, msg, lgr)
+		respond.WithError(w, httpStatus, msg, lgr)
 		return
 	}
 
-	respond.WithSuccessJSON(w, http.StatusCreated, map[string]string{
+	respond.WithSuccessJSON(w, httpStatus, map[string]string{
 		"access_token":  accessToken,
 		"refresh_token": refreshToken,
 	})

@@ -40,7 +40,7 @@ func TestRefreshHandler(t *testing.T) {
 				body: fmt.Sprintf(`{"access_token":"%s","refresh_token":"%s"}`, accessStr, refreshStr),
 				mockSetup: func(m *MockUserUsecase) {
 					m.On("Refresh", mock.Anything, accessStr, refreshStr, ipAddress, testAgent).
-						Return("", "", errors.New("invalid token")).Once()
+						Return("", "", http.StatusInternalServerError, errors.New("invalid token")).Once()
 				},
 				expectedCode: http.StatusInternalServerError,
 				expectedBody: `{"error":"Refresh error: invalid token"}`,
@@ -52,7 +52,7 @@ func TestRefreshHandler(t *testing.T) {
 				body: fmt.Sprintf(`{"access_token":"%s","refresh_token":"%s"}`, accessStr, refreshStr),
 				mockSetup: func(m *MockUserUsecase) {
 					m.On("Refresh", mock.Anything, accessStr, refreshStr, ipAddress, testAgent).
-						Return("new-access", "new-refresh", nil).Once()
+						Return("new-access", "new-refresh", http.StatusCreated, nil).Once()
 				},
 				expectedCode: http.StatusCreated,
 				expectedBody: `"access_token":"new-access"`,

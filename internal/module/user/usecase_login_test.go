@@ -128,15 +128,15 @@ func TestLogin(t *testing.T) {
 				SessionCache: cache,
 			}
 
-			token, plain, err := uc.Login(context.Background(), defaultEmail, defaultPassword, clientIP, clientUserAgent)
+			token, plain, _, logErr := uc.Login(context.Background(), defaultEmail, defaultPassword, clientIP, clientUserAgent)
 
 			assert.Equal(t, tc.wantToken, token)
 			assert.Equal(t, tc.wantPlain, plain)
 
 			if tc.wantErr != nil {
-				assert.EqualError(t, err, tc.wantErr.Error())
+				assert.EqualError(t, logErr, tc.wantErr.Error())
 			} else {
-				assert.NoError(t, err)
+				assert.NoError(t, logErr)
 			}
 
 			repo.AssertExpectations(t)
