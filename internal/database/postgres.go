@@ -3,7 +3,7 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"full-project-mock/internal/config"
+	"github.com/Elaman1/full-project-mock/internal/config"
 	"time"
 
 	_ "github.com/lib/pq"

@@ -1,7 +1,7 @@
 package main
 
 import (
-	"full-project-mock/internal/app"
+	"github.com/Elaman1/full-project-mock/internal/app"
 	"log"
 )
 

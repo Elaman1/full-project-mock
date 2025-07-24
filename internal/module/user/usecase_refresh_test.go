@@ -2,7 +2,7 @@ package user
 
 import (
 	"context"
-	"full-project-mock/internal/mocks"
+	"github.com/Elaman1/full-project-mock/internal/mocks"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -159,15 +159,15 @@ func TestRefresh(t *testing.T) {
 				SessionCache: cs,
 			}
 
-			gotToken, gotPlain, err := uc.Refresh(context.Background(), accessToken, plainToken, clientIP, clientUserAgent)
+			gotToken, gotPlain, _, refreshErr := uc.Refresh(context.Background(), accessToken, plainToken, clientIP, clientUserAgent)
 
 			assert.Equal(t, tc.wantToken, gotToken)
 			assert.Equal(t, tc.wantPlain, gotPlain)
 
 			if tc.wantErr != nil {
-				assert.EqualError(t, err, tc.wantErr.Error())
+				assert.EqualError(t, refreshErr, tc.wantErr.Error())
 			} else {
-				assert.NoError(t, err)
+				assert.NoError(t, refreshErr)
 			}
 
 			repo.AssertExpectations(t)

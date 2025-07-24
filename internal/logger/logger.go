@@ -1,7 +1,7 @@
 package logger
 
 import (
-	"full-project-mock/internal/config"
+	"github.com/Elaman1/full-project-mock/internal/config"
 	"log/slog"
 	"os"
 	"sync"

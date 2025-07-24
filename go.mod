@@ -1,4 +1,4 @@
-module full-project-mock
+module github.com/Elaman1/full-project-mock
 
 go 1.23.3
 

@@ -3,12 +3,13 @@ package user
 import (
 	"context"
 	"fmt"
-	domcache "full-project-mock/internal/domain/cache"
-	"full-project-mock/internal/domain/constants"
-	"full-project-mock/internal/domain/model"
-	"full-project-mock/internal/domain/repository"
-	"full-project-mock/internal/domain/usecase"
-	"full-project-mock/pkg/hasher"
+	domcache "github.com/Elaman1/full-project-mock/internal/domain/cache"
+	"github.com/Elaman1/full-project-mock/internal/domain/constants"
+	"github.com/Elaman1/full-project-mock/internal/domain/model"
+	"github.com/Elaman1/full-project-mock/internal/domain/repository"
+	"github.com/Elaman1/full-project-mock/internal/domain/usecase"
+	"github.com/Elaman1/full-project-mock/pkg/hasher"
+	"net/http"
 	"strconv"
 	"time"
 )
@@ -60,29 +61,29 @@ func (u *Usecase) Register(ctx context.Context, email, username, password string
 	return 0, nil
 }
 
-func (u *Usecase) Login(ctx context.Context, email, password, clientIP, ua string) (string, string, error) {
+func (u *Usecase) Login(ctx context.Context, email, password, clientIP, ua string) (string, string, int, error) {
 	user, err := u.Rep.Get(ctx, email)
 	if err != nil {
-		return "", "", err
+		return "", "", http.StatusBadRequest, err
 	}
 
 	err = hasher.Verify(user.Password, password)
 	if err != nil {
-		return "", "", err
+		return "", "", http.StatusBadRequest, err
 	}
 
 	return u.generateAccessAndRefreshToken(ctx, clientIP, ua, user)
 }
 
-func (u *Usecase) generateAccessAndRefreshToken(ctx context.Context, clientIP, ua string, user *model.User) (string, string, error) {
+func (u *Usecase) generateAccessAndRefreshToken(ctx context.Context, clientIP, ua string, user *model.User) (string, string, int, error) {
 	accessToken, err := u.TokenService.GenerateAccessToken(user)
 	if err != nil {
-		return "", "", err
+		return "", "", http.StatusInternalServerError, err
 	}
 
 	refreshTokenId, plainToken, err := u.TokenService.GenerateRefreshToken()
 	if err != nil {
-		return "", "", err
+		return "", "", http.StatusInternalServerError, err
 	}
 
 	hashedPlainToken := hashRefreshToken(plainToken)
@@ -97,57 +98,57 @@ func (u *Usecase) generateAccessAndRefreshToken(ctx context.Context, clientIP, u
 
 	err = u.SessionCache.SetRefreshTokenId(ctx, hashedPlainToken, refreshTokenId, u.RefreshTtl)
 	if err != nil {
-		return "", "", err
+		return "", "", http.StatusInternalServerError, err
 	}
 
 	err = u.SessionCache.SaveSession(ctx, newSess, u.RefreshTtl)
 	if err != nil {
-		return "", "", err
+		return "", "", http.StatusInternalServerError, err
 	}
 
-	return accessToken, plainToken, nil
+	return accessToken, plainToken, http.StatusOK, nil
 }
 
-func (u *Usecase) Refresh(ctx context.Context, accessToken, refreshToken, clientIP, ua string) (string, string, error) {
+func (u *Usecase) Refresh(ctx context.Context, accessToken, refreshToken, clientIP, ua string) (string, string, int, error) {
 	mapClaims, err := u.TokenService.ParseToken(accessToken)
 	if err != nil {
-		return "", "", err
+		return "", "", http.StatusBadRequest, err
 	}
 
 	userId, err := strconv.Atoi(mapClaims.Subject)
 	if err != nil {
-		return "", "", err
+		return "", "", http.StatusBadRequest, err
 	}
 
 	user, err := u.Rep.GetById(ctx, int64(userId))
 	if err != nil {
-		return "", "", err
+		return "", "", http.StatusBadRequest, err
 	}
 
 	refreshTokenId, err := u.SessionCache.GetRefreshTokenId(ctx, hashRefreshToken(refreshToken))
 	if err != nil {
-		return "", "", err
+		return "", "", http.StatusBadRequest, err
 	}
 
 	refreshSession, err := u.SessionCache.GetSession(ctx, refreshTokenId)
 	if err != nil {
-		return "", "", err
+		return "", "", http.StatusBadRequest, err
 	}
 
 	if refreshSession.ExpiresAt.Before(time.Now()) {
-		return "", "", fmt.Errorf("время истек заново авторизуйтесь")
+		return "", "", http.StatusUnauthorized, fmt.Errorf("время истек заново авторизуйтесь")
 	}
 
 	if refreshSession.IP != clientIP {
-		return "", "", fmt.Errorf("авторизуйтесь еще раз")
+		return "", "", http.StatusUnauthorized, fmt.Errorf("авторизуйтесь еще раз")
 	}
 
 	if refreshSession.UserAgent != ua {
-		return "", "", fmt.Errorf("авторизуйтесь еще раз")
+		return "", "", http.StatusUnauthorized, fmt.Errorf("авторизуйтесь еще раз")
 	}
 
 	if hashRefreshToken(refreshToken) != refreshSession.TokenHash {
-		return "", "", fmt.Errorf("авторизуйтесь еще раз")
+		return "", "", http.StatusUnauthorized, fmt.Errorf("авторизуйтесь еще раз")
 	}
 
 	return u.generateAccessAndRefreshToken(ctx, clientIP, ua, user)

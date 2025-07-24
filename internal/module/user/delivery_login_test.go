@@ -3,7 +3,7 @@ package user
 import (
 	"errors"
 	"fmt"
-	"full-project-mock/internal/service"
+	"github.com/Elaman1/full-project-mock/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"io"
@@ -48,9 +48,9 @@ func TestLoginHandler(t *testing.T) {
 				body: fmt.Sprintf(`{"email":"%s","password":"%s"}`, email, wrongPass),
 				mockSetup: func(m *MockUserUsecase) {
 					m.On("Login", mock.Anything, email, wrongPass, ipAddress, testAgent).
-						Return("", "", errors.New("invalid credentials")).Once()
+						Return("", "", http.StatusBadRequest, errors.New("invalid credentials")).Once()
 				},
-				expectedCode: http.StatusInternalServerError,
+				expectedCode: http.StatusBadRequest,
 				expectedBody: `{"error":"User login error: invalid credentials"}`,
 			},
 		},
@@ -60,10 +60,10 @@ func TestLoginHandler(t *testing.T) {
 				body: fmt.Sprintf(`{"email":"%s","password":"%s"}`, email, correctPass),
 				mockSetup: func(m *MockUserUsecase) {
 					m.On("Login", mock.Anything, email, correctPass, ipAddress, testAgent).
-						Return("access-token", "refresh-token", nil).Once()
+						Return("access-token", "refresh-token", http.StatusOK, nil).Once()
 				},
-				expectedCode: http.StatusCreated,
-				expectedBody: `"access_token":"access-token"`, // substring check
+				expectedCode: http.StatusOK,
+				expectedBody: `"access_token":"access-token"`,
 			},
 		},
 	}

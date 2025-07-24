@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"context"
-	"full-project-mock/internal/service"
+	"github.com/Elaman1/full-project-mock/internal/service"
 	"net/http"
 )
 

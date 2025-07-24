@@ -2,7 +2,7 @@ package user
 
 import (
 	"errors"
-	"full-project-mock/pkg/validator"
+	"github.com/Elaman1/full-project-mock/pkg/validator"
 )
 
 type RegisterRequest struct {

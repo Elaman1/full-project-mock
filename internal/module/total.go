@@ -2,8 +2,8 @@ package module
 
 import (
 	"database/sql"
-	"full-project-mock/internal/domain/usecase"
-	"full-project-mock/internal/module/user"
+	"github.com/Elaman1/full-project-mock/internal/domain/usecase"
+	"github.com/Elaman1/full-project-mock/internal/module/user"
 	"github.com/redis/go-redis/v9"
 )
 

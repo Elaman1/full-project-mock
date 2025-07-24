@@ -9,3 +9,6 @@ migrate-test:
 
 docker-down:
 	docker-compose down
+
+test:
+	go test ./...

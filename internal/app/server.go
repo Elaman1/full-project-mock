@@ -3,8 +3,8 @@ package app
 import (
 	"context"
 	"errors"
-	"full-project-mock/internal/bootstrap"
-	"full-project-mock/internal/config"
+	"github.com/Elaman1/full-project-mock/internal/bootstrap"
+	"github.com/Elaman1/full-project-mock/internal/config"
 	"log/slog"
 	"net/http"
 	"os/signal"

@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"bytes"
-	"full-project-mock/internal/service"
+	"github.com/Elaman1/full-project-mock/internal/service"
 	"github.com/stretchr/testify/assert"
 	"log/slog"
 	"net/http"

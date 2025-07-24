@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"errors"
-	"full-project-mock/internal/mocks"
+	"github.com/Elaman1/full-project-mock/internal/mocks"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

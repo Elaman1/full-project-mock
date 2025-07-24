@@ -6,8 +6,10 @@ import (
 	"crypto/rsa"
 	"database/sql"
 	"errors"
-	"full-project-mock/internal/cache"
-	"full-project-mock/internal/service"
+	"github.com/Elaman1/full-project-mock/internal/cache"
+	cache2 "github.com/Elaman1/full-project-mock/internal/domain/cache"
+	"github.com/Elaman1/full-project-mock/internal/domain/usecase"
+	"github.com/Elaman1/full-project-mock/internal/service"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"log/slog"
@@ -17,11 +19,8 @@ import (
 	"testing"
 )
 
-var (
-	testTx *sql.Tx
-)
-
-func initTx(t *testing.T) {
+// Делаем все в одной транзакции так как мы не комитим, а откатываем
+func initTx(t *testing.T) *sql.Tx {
 	setConn(t)
 
 	t.Helper()
@@ -41,22 +40,22 @@ func initTx(t *testing.T) {
 		}
 	})
 
-	testTx = tx
+	return tx
 }
 
 // Сборка handler → usecase → repository на реальной БД
-func buildUserHandlerIntegration(t *testing.T) *UserHandler {
+func buildUserHandlerIntegration(t *testing.T, tx *sql.Tx) (*UserHandler, usecase.TokenService, cache2.SessionCache) {
 	t.Helper()
 
-	userRepo := NewUserRepository(testTx)
+	userRepo := NewUserRepository(tx)
 	sessionCache := cache.NewSessionRedisRepository(testRedis)
 	privateKey, publicKey := generateTestKeys(t)
 	tokenService := service.NewTokenService(publicKey, privateKey, accessTTL)
 	usecase := NewUserUsecase(userRepo, tokenService, sessionCache)
-	return &UserHandler{Usecase: usecase}
+	return &UserHandler{Usecase: usecase}, tokenService, sessionCache
 }
 func TestRegisterHandler_Integration(t *testing.T) {
-	initTx(t)
+	tx := initTx(t)
 
 	tests := []struct {
 		name           string
@@ -111,7 +110,7 @@ func TestRegisterHandler_Integration(t *testing.T) {
 	for i, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Используем отдельный handler для каждого кейса (чтобы rollback и RedisFlush работали корректно)
-			handler := buildUserHandlerIntegration(t)
+			handler, _, _ := buildUserHandlerIntegration(t, tx)
 
 			req := httptest.NewRequest(http.MethodPost, "/register", strings.NewReader(tt.payload))
 			req.Header.Set("Content-Type", "application/json")
@@ -123,8 +122,8 @@ func TestRegisterHandler_Integration(t *testing.T) {
 
 			res := rec.Result()
 			defer res.Body.Close()
-
-			body, _ := io.ReadAll(res.Body)
+			body, err := io.ReadAll(res.Body)
+			assert.NoError(t, err)
 
 			assert.Equal(t, tt.wantStatus, res.StatusCode, "unexpected status for test #%d", i)
 			assert.Contains(t, string(body), tt.wantInResponse, "unexpected body for test #%d: %s", i, string(body))
@@ -152,4 +151,9 @@ func generateTestKeys(t *testing.T) (*rsa.PrivateKey, *rsa.PublicKey) {
 	}
 	publicKey := &privateKey.PublicKey
 	return privateKey, publicKey
+}
+
+type LoginAndRefreshResponseStruct struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
 }

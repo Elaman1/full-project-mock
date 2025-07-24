@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"full-project-mock/internal/service"
+	"github.com/Elaman1/full-project-mock/internal/service"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"io"
@@ -111,9 +111,9 @@ func (mock *MockUserUsecase) Register(ctx context.Context, email, username, pass
 	return id, args.Error(1)
 }
 
-func (mock *MockUserUsecase) Login(ctx context.Context, email, password, clientIP, ua string) (string, string, error) {
+func (mock *MockUserUsecase) Login(ctx context.Context, email, password, clientIP, ua string) (string, string, int, error) {
 	args := mock.Called(ctx, email, password, clientIP, ua)
-	return args.String(0), args.String(1), args.Error(2)
+	return args.String(0), args.String(1), args.Int(2), args.Error(3)
 }
 
 func (mock *MockUserUsecase) Logout(ctx context.Context, refreshToken, clientIP, ua string) error {
@@ -126,7 +126,7 @@ func (mock *MockUserUsecase) LogoutAllDevices(ctx context.Context, refreshToken,
 	return args.Error(0)
 }
 
-func (mock *MockUserUsecase) Refresh(ctx context.Context, accessToken, refreshToken, clientIP, ua string) (string, string, error) {
+func (mock *MockUserUsecase) Refresh(ctx context.Context, accessToken, refreshToken, clientIP, ua string) (string, string, int, error) {
 	args := mock.Called(ctx, accessToken, refreshToken, clientIP, ua)
-	return args.String(0), args.String(1), args.Error(2)
+	return args.String(0), args.String(1), args.Int(2), args.Error(3)
 }
