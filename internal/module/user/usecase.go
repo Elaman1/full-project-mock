@@ -64,12 +64,12 @@ func (u *Usecase) Register(ctx context.Context, email, username, password string
 func (u *Usecase) Login(ctx context.Context, email, password, clientIP, ua string) (string, string, int, error) {
 	user, err := u.Rep.Get(ctx, email)
 	if err != nil {
-		return "", "", http.StatusBadRequest, err
+		return "", "", http.StatusUnauthorized, err
 	}
 
 	err = hasher.Verify(user.Password, password)
 	if err != nil {
-		return "", "", http.StatusBadRequest, err
+		return "", "", http.StatusUnauthorized, err
 	}
 
 	return u.generateAccessAndRefreshToken(ctx, clientIP, ua, user)
