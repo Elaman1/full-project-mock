@@ -77,13 +77,13 @@ func TestLoginHandler_Integration(t *testing.T) {
 		{
 			name:           "not_found_email",
 			payload:        `{"email":"not-email@test.com","password":"not-correct-password"}`,
-			wantStatus:     http.StatusBadRequest,
+			wantStatus:     http.StatusUnauthorized,
 			wantInResponse: "user not found",
 		},
 		{
 			name:           "not_correct_password",
 			payload:        `{"email":"login-user@test.com","password":"not"}`,
-			wantStatus:     http.StatusBadRequest,
+			wantStatus:     http.StatusUnauthorized,
 			wantInResponse: "логин или пароль неправильный",
 		},
 	}
