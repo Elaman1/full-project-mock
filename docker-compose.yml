@@ -58,6 +58,13 @@ services:
       - ./migrations:/migrations
     entrypoint:
       [ "migrate", "-path=/migrations", "-database=postgres://postgres:Aa1234@db:5432/testdb?sslmode=disable", "up" ]
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus  # ← сюда будет сохраняться база метрик
+    ports:
+      - "9090:9090"
 
   app:
     build: .
@@ -78,3 +85,4 @@ services:
 volumes:
   db-data:
   redis-data:
+  prometheus_data:
