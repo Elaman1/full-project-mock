@@ -39,7 +39,7 @@ func (u *UserHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	respond.WithSuccess(w, http.StatusCreated, "Успешно создано")
+	respond.WithSuccess(w, http.StatusCreated, "user registered")
 	lgr.Info(fmt.Sprintf("user registered %d", newUserId))
 }
 

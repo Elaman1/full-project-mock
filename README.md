@@ -54,14 +54,14 @@ pkg/                - переиспользуемые пакеты (hasher, val
 
 ## API endpoints (v1)
 
-| Метод | Путь                    | Описание                   |
-|-------|-------------------------|----------------------------|
-| POST  | `/api/v1/auth/register` | Регистрация пользователя   |
-| POST  | `/api/v1/auth/login`    | Вход и получение токенов   |
-| POST  | `/api/v1/auth/refresh`  | Обновление access-токена   |
-| POST  | `/api/v1/auth/logout`   | Выход с текущего устройства|
-| POST  | `/api/v1/auth/logout_all` | Выход со всех устройств  |
-| GET   | `/api/v1/auth/me`       | Получение ID пользователя  |
+| Метод | Путь               | Описание                    |
+|-------|--------------------|-----------------------------|
+| POST  | `/register`        | Регистрация пользователя    |
+| POST  | `/login`           | Вход и получение токенов    |
+| POST  | `/refresh`         | Обновление access-токена    |
+| POST  | `/auth/logout`     | Выход с текущего устройства |
+| POST  | `/auth/logout_all` | Выход со всех устройств     |
+| GET   | `/auth/me`         | Получение ID пользователя   |
 
 ---
 
@@ -89,16 +89,6 @@ make migrate
 # Остановить окружение
 make docker-down
 ```
-
----
-
-## Roadmap
-
-- [x] Access/refresh + Redis store
-- [x] Тесты всех слоёв
-- [x] Graceful shutdown
-- [ ] Метрики (Prometheus)
-- [ ] Профилирование (pprof)
 
 ---
 
