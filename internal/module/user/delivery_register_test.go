@@ -53,7 +53,7 @@ func TestRegisterHandler(t *testing.T) {
 						Return(int64(0), errors.New("some error")).Once()
 				},
 				expectedCode: http.StatusInternalServerError,
-				expectedBody: `{"error":"Ошибка при регистрации: some error"}`,
+				expectedBody: `{"error":"User registration error: some error"}`,
 			},
 		},
 		{
