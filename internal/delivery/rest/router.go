@@ -25,7 +25,7 @@ func InitRouter(ctx context.Context, routeApp *RouteApp, allModules *module.Modu
 
 		r.Get("/me", allModules.UserHandler.MeHandler)
 		r.Post("/logout", allModules.UserHandler.LogoutHandler)
-		r.Post("/logout-all", allModules.UserHandler.LogoutAllHandler)
+		r.Post("/logout_all", allModules.UserHandler.LogoutAllHandler)
 	})
 
 	return r

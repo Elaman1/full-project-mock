@@ -1,0 +1,111 @@
+openapi: 3.0.0
+info:
+  title: Full Project Mock API
+  version: 1.0.0
+  description: |
+    API авторизации на Go. JWT + Redis. Основан на чистой архитектуре.
+
+paths:
+  /register:
+    post:
+      summary: Регистрация пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                username:
+                  type: string
+                password:
+                  type: string
+              required: [email, username, password]
+      responses:
+        '201':
+          description: Успешно создано
+        '400':
+          description: Ошибка валидации данных
+        '500':
+          description: Ошибка при регистрации
+
+  /login:
+    post:
+      summary: Вход пользователя
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+              required: [email, password]
+      responses:
+        '200':
+          description: Успешный вход
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  access_token:
+                    type: string
+                  refresh_token:
+                    type: string
+        '401':
+          description: Неверные данные
+
+  /refresh:
+    post:
+      summary: Обновление access-токена
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refresh_token:
+                  type: string
+              required: [refresh_token]
+      responses:
+        '200':
+          description: Обновление успешно
+        '401':
+          description: Токен невалиден
+
+  /auth/logout:
+    post:
+      summary: Выход с текущего устройства
+      responses:
+        '204':
+          description: Выход выполнен
+
+  /auth/logout_all:
+    post:
+      summary: Выход со всех устройств
+      responses:
+        '204':
+          description: Все сессии удалены
+
+  /auth/me:
+    get:
+      summary: Получение ID текущего пользователя
+      responses:
+        '200':
+          description: Информация о пользователе
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: string
+        '404':
+          description: Пользователь не найден
