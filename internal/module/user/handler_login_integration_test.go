@@ -33,7 +33,7 @@ func TestLoginHandler_Integration(t *testing.T) {
 
 	body, err := io.ReadAll(registerRes.Body)
 	require.NoError(t, err)
-	require.Contains(t, string(body), "Успешно создано")
+	require.Contains(t, string(body), "user registered")
 
 	// После успешной регистрации проверяем логин
 	tests := []struct {

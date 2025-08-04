@@ -67,7 +67,7 @@ func TestRegisterHandler_Integration(t *testing.T) {
 			name:           "valid registration",
 			payload:        `{"email":"int-user1@test.com","username":"integrationUser","password":"secure123"}`,
 			wantStatus:     http.StatusCreated,
-			wantInResponse: "Успешно создано",
+			wantInResponse: "user registered",
 		},
 		{
 			name:           "missing email",
@@ -97,7 +97,7 @@ func TestRegisterHandler_Integration(t *testing.T) {
 			name:           "duplicate email",
 			payload:        `{"email":"int-user4@test.com","username":"user","password":"secure123"}`,
 			wantStatus:     http.StatusCreated,
-			wantInResponse: "Успешно создано", // первый вызов
+			wantInResponse: "user registered", // первый вызов
 		},
 		{
 			name:           "duplicate email (again)",

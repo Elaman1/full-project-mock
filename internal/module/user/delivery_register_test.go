@@ -65,7 +65,7 @@ func TestRegisterHandler(t *testing.T) {
 						Return(int64(123), nil).Once()
 				},
 				expectedCode: http.StatusCreated,
-				expectedBody: `{"success":"Успешно создано"}`,
+				expectedBody: `{"success":"user registered"}`,
 			},
 		},
 	}
