@@ -3,9 +3,11 @@ package rest
 import (
 	"context"
 	"github.com/Elaman1/full-project-mock/internal/domain/usecase"
+	"github.com/Elaman1/full-project-mock/internal/metrics"
 	"github.com/Elaman1/full-project-mock/internal/middleware"
 	"github.com/Elaman1/full-project-mock/internal/module"
 	"github.com/go-chi/chi/v5"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"log/slog"
 )
 
@@ -14,6 +16,10 @@ func InitRouter(ctx context.Context, routeApp *RouteApp, allModules *module.Modu
 
 	r.Use(middleware.LogMiddleware(routeApp.Logs))
 	r.Use(middleware.ContextJoinMiddleware(ctx))
+	r.Use(middleware.MetricsMiddleware(routeApp.MetricsCollector))
+
+	// Метрика
+	r.Handle("/metrics", promhttp.Handler())
 
 	r.Post("/register", allModules.UserHandler.RegisterHandler)
 	r.Post("/login", allModules.UserHandler.LoginHandler)
@@ -32,6 +38,7 @@ func InitRouter(ctx context.Context, routeApp *RouteApp, allModules *module.Modu
 }
 
 type RouteApp struct {
-	Logs         *slog.Logger
-	TokenService usecase.TokenService
+	Logs             *slog.Logger
+	TokenService     usecase.TokenService
+	MetricsCollector metrics.MetricsCollector
 }

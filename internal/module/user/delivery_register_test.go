@@ -130,3 +130,23 @@ func (mock *MockUserUsecase) Refresh(ctx context.Context, accessToken, refreshTo
 	args := mock.Called(ctx, accessToken, refreshToken, clientIP, ua)
 	return args.String(0), args.String(1), args.Int(2), args.Error(3)
 }
+
+type MockMetricsCollector struct {
+	mock.Mock
+}
+
+func (mock *MockMetricsCollector) IncHttpRequest(method, path, status string) {
+	mock.Called(method, path, status)
+}
+
+func (mock *MockMetricsCollector) ObserveRequestDuration(method, path string, durationSeconds float64) {
+	mock.Called(method, path, durationSeconds)
+}
+
+func (mock *MockMetricsCollector) LoginSuccessCounter() {
+	//
+}
+
+func (mock *MockMetricsCollector) LoginFailureCounter(reason string) {
+	mock.Called(reason)
+}

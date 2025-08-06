@@ -9,7 +9,9 @@ import (
 	"github.com/Elaman1/full-project-mock/internal/cache"
 	cache2 "github.com/Elaman1/full-project-mock/internal/domain/cache"
 	"github.com/Elaman1/full-project-mock/internal/domain/usecase"
+	"github.com/Elaman1/full-project-mock/internal/metrics"
 	"github.com/Elaman1/full-project-mock/internal/service"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"io"
 	"log/slog"
@@ -52,7 +54,9 @@ func buildUserHandlerIntegration(t *testing.T, tx *sql.Tx) (*UserHandler, usecas
 	privateKey, publicKey := generateTestKeys(t)
 	tokenService := service.NewTokenService(publicKey, privateKey, accessTTL)
 	usecase := NewUserUsecase(userRepo, tokenService, sessionCache)
-	return &UserHandler{Usecase: usecase}, tokenService, sessionCache
+	reg := prometheus.NewRegistry()
+	metricsCollector := metrics.NewPrometheusMetricsCollector(reg)
+	return &UserHandler{Usecase: usecase, MetricCollector: metricsCollector}, tokenService, sessionCache
 }
 func TestRegisterHandler_Integration(t *testing.T) {
 	tx := initTx(t)

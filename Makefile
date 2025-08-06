@@ -1,8 +1,8 @@
 docker-up:
-	docker-compose up --build db redis app
+	docker-compose up --build db redis prometheus grafana app
 
 docker-down:
-	docker-compose down
+	docker-compose down -v
 
 migrate:
 	docker-compose run --rm migrate

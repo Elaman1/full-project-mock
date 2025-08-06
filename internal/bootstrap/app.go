@@ -11,8 +11,10 @@ import (
 	"github.com/Elaman1/full-project-mock/internal/database"
 	"github.com/Elaman1/full-project-mock/internal/delivery/rest"
 	"github.com/Elaman1/full-project-mock/internal/logger"
+	"github.com/Elaman1/full-project-mock/internal/metrics"
 	"github.com/Elaman1/full-project-mock/internal/module"
 	"github.com/Elaman1/full-project-mock/internal/service"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/redis/go-redis/v9"
 	"log/slog"
 	"net/http"
@@ -61,12 +63,15 @@ func InitApp(ctx context.Context, cfg *config.Config) (*App, error) {
 		return nil, err
 	}
 
+	metricsCollector := metrics.NewPrometheusMetricsCollector(prometheus.DefaultRegisterer)
+
 	tokenService := service.NewTokenService(publicKey, privateKey, ttl)
-	allModules := module.InitAllModule(db, redisDB, tokenService)
+	allModules := module.InitAllModule(db, redisDB, tokenService, metricsCollector)
 
 	routeApp := &rest.RouteApp{
-		Logs:         logs,
-		TokenService: tokenService,
+		Logs:             logs,
+		TokenService:     tokenService,
+		MetricsCollector: metricsCollector,
 	}
 	routeHandler := rest.InitRouter(ctx, routeApp, allModules)
 

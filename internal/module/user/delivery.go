@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/Elaman1/full-project-mock/internal/domain/usecase"
+	"github.com/Elaman1/full-project-mock/internal/metrics"
 	"github.com/Elaman1/full-project-mock/internal/middleware"
 	"github.com/Elaman1/full-project-mock/internal/service"
 	"github.com/Elaman1/full-project-mock/pkg/req"
@@ -12,7 +13,8 @@ import (
 )
 
 type UserHandler struct {
-	Usecase usecase.UserUsecase
+	Usecase         usecase.UserUsecase
+	MetricCollector metrics.MetricsCollector
 }
 
 func (u *UserHandler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
@@ -50,6 +52,7 @@ func (u *UserHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	err := json.NewDecoder(r.Body).Decode(&loginRequest)
 	if err != nil {
 		respond.WithError(w, http.StatusBadRequest, "Invalid request payload", lgr)
+		u.MetricCollector.LoginFailureCounter("Invalid request payload")
 		return
 	}
 
@@ -57,6 +60,7 @@ func (u *UserHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		msg := fmt.Sprintf("User validation error: %v", err)
 		respond.WithError(w, http.StatusBadRequest, msg, lgr)
+		u.MetricCollector.LoginFailureCounter("User validation error")
 		return
 	}
 
@@ -65,13 +69,16 @@ func (u *UserHandler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		msg := fmt.Sprintf("User login error: %v", err)
 		respond.WithError(w, httpStatus, msg, lgr)
+		u.MetricCollector.LoginFailureCounter("User login error")
 		return
 	}
 
+	u.MetricCollector.LoginSuccessCounter()
 	respond.WithSuccessJSON(w, httpStatus, map[string]string{
 		"access_token":  accessToken,
 		"refresh_token": refreshToken,
 	})
+
 }
 
 func (u *UserHandler) MeHandler(w http.ResponseWriter, r *http.Request) {

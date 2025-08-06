@@ -25,7 +25,7 @@ var (
 func TestLoginHandler(t *testing.T) {
 	type args struct {
 		body         string
-		mockSetup    func(m *MockUserUsecase)
+		mockSetup    func(m *MockUserUsecase, mm *MockMetricsCollector)
 		expectedCode int
 		expectedBody string
 	}
@@ -36,8 +36,10 @@ func TestLoginHandler(t *testing.T) {
 		{
 			name: "Invalid JSON",
 			args: args{
-				body:         fmt.Sprintf(`{"email": "%s",`, email), // malformed JSON
-				mockSetup:    func(m *MockUserUsecase) {},
+				body: fmt.Sprintf(`{"email": "%s",`, email), // malformed JSON
+				mockSetup: func(m *MockUserUsecase, mm *MockMetricsCollector) {
+					mm.On("LoginFailureCounter", "Invalid request payload")
+				},
 				expectedCode: http.StatusBadRequest,
 				expectedBody: `{"error":"Invalid request payload"}`,
 			},
@@ -46,9 +48,10 @@ func TestLoginHandler(t *testing.T) {
 			name: "Usecase returns error",
 			args: args{
 				body: fmt.Sprintf(`{"email":"%s","password":"%s"}`, email, wrongPass),
-				mockSetup: func(m *MockUserUsecase) {
+				mockSetup: func(m *MockUserUsecase, mm *MockMetricsCollector) {
 					m.On("Login", mock.Anything, email, wrongPass, ipAddress, testAgent).
 						Return("", "", http.StatusBadRequest, errors.New("invalid credentials")).Once()
+					mm.On("LoginFailureCounter", "User login error")
 				},
 				expectedCode: http.StatusBadRequest,
 				expectedBody: `{"error":"User login error: invalid credentials"}`,
@@ -58,9 +61,11 @@ func TestLoginHandler(t *testing.T) {
 			name: "Success",
 			args: args{
 				body: fmt.Sprintf(`{"email":"%s","password":"%s"}`, email, correctPass),
-				mockSetup: func(m *MockUserUsecase) {
+				mockSetup: func(m *MockUserUsecase, mm *MockMetricsCollector) {
 					m.On("Login", mock.Anything, email, correctPass, ipAddress, testAgent).
 						Return("access-token", "refresh-token", http.StatusOK, nil).Once()
+
+					mm.On("LoginSuccessCounter")
 				},
 				expectedCode: http.StatusOK,
 				expectedBody: `"access_token":"access-token"`,
@@ -71,9 +76,10 @@ func TestLoginHandler(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mockUsecase := new(MockUserUsecase)
-			tt.args.mockSetup(mockUsecase)
+			mockMetrics := new(MockMetricsCollector)
+			tt.args.mockSetup(mockUsecase, mockMetrics)
 
-			handler := &UserHandler{Usecase: mockUsecase}
+			handler := &UserHandler{Usecase: mockUsecase, MetricCollector: mockMetrics}
 
 			req := httptest.NewRequest(http.MethodPost, "/login", strings.NewReader(tt.args.body))
 			req.Header.Set("User-Agent", testAgent)
